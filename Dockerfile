@@ -24,10 +24,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV ROS_WS=/home/${USERNAME}/ws
 WORKDIR ${ROS_WS}/src
 RUN git clone "https://github.com/PX4/px4_msgs" --branch "release/1.15"
-
-RUN git clone "https://github.com/eProsima/Micro-XRCE-DDS-Agent" --branch v3.0.1
-WORKDIR ${ROS_WS}/src/Micro-XRCE-DDS-Agent/build
-RUN cmake .. && make && sudo make install && sudo ldconfig /usr/local/lib
+RUN git clone "https://github.com/eProsima/Micro-XRCE-DDS-Agent" --branch v2.4.1
 
 RUN sudo apt-get update && sudo apt-get -y --quiet --no-install-recommends install \
     ros-${ROS_DISTRO}-rviz2 \
