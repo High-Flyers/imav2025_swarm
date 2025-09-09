@@ -25,11 +25,16 @@ WORKDIR ${ROS_WS}/src
 COPY . imav
 RUN sudo chmod +x imav/scripts/build.sh
 
-WORKDIR ${ROS_WS}
+WORKDIR ${ROS_WS}/src/imav
 RUN source "/opt/ros/${ROS_DISTRO}/setup.bash" && \
     src/imav/scripts/build.sh
 
 RUN echo "source \"/opt/ros/${ROS_DISTRO}/setup.bash\"" >> "/home/${USERNAME}/.bashrc" && \
-    echo "source \"${ROS_WS}/install/setup.bash\"" >> "/home/${USERNAME}/.bashrc"
+    echo "source \"${ROS_WS}/install/setup.bash\"" >> "/home/${USERNAME}/.bashrc" && \
+    echo "source \"${ROS_WS}/src/imav/install/setup.bash\"" >> "/home/${USERNAME}/.bashrc"
 
+RUN sudo sed -i '$i source $ROS_WS/install/setup.bash' /ros_entrypoint.sh && \
+    sudo sed -i '$i source $ROS_WS/src/imav/install/setup.bash' /ros_entrypoint.sh
+
+ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["/bin/bash"]
