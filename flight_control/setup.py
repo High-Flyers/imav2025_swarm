@@ -1,3 +1,6 @@
+import os
+from glob import glob
+
 from setuptools import find_packages, setup
 
 package_name = 'flight_control'
@@ -10,16 +13,18 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join("share", package_name, "launch"), glob("launch/*.py"))
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='High Flyers',
     maintainer_email='highflyers.polsl@gmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Flight control package for IMAV 2025',
+    license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            f"mission_control = {package_name}.mission_control_node:main"
         ],
     },
 )
