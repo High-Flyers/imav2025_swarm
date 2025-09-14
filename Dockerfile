@@ -22,12 +22,11 @@ RUN source "/opt/ros/${ROS_DISTRO}/setup.bash" && \
     colcon build
 
 WORKDIR ${ROS_WS}/src
-COPY . imav
-RUN sudo chmod +x imav/scripts/build.sh
+COPY --chown=${USER_UID}:${USER_GID} . imav
 
 WORKDIR ${ROS_WS}/src/imav
 RUN source "/opt/ros/${ROS_DISTRO}/setup.bash" && \
-    src/imav/scripts/build.sh
+    scripts/build.sh
 
 RUN echo "source \"/opt/ros/${ROS_DISTRO}/setup.bash\"" >> "/home/${USERNAME}/.bashrc" && \
     echo "source \"${ROS_WS}/install/setup.bash\"" >> "/home/${USERNAME}/.bashrc" && \

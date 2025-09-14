@@ -227,3 +227,6 @@ AMENT_IGNORE
 build
 install
 log
+build/
+install/
+log/
