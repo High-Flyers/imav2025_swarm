@@ -8,9 +8,15 @@ from px4_msgs.msg import (
     VehicleLocalPosition,
     VehicleStatus,
     VehicleAttitude,
+    TrajectorySetpoint,
 )
 
-from flight_control.qos_profiles import PX4_QOS
+from flight_control.utils.qos_profiles import PX4_QOS
+from flight_control.utils.frame_transforms import (
+    ENULocalOdometry,
+    enu_to_ned,
+    enu_to_ned_heading,
+)
 
 
 def offboard_command(func):
@@ -25,9 +31,12 @@ class OffboardControl:
     HEARTBEAT_THRESHOLD = 10
 
     def __init__(self, node: Node) -> None:
+        self._enu: ENULocalOdometry = None
+
         self._node = node
 
         self._vehicle_local_position = VehicleLocalPosition()
+        self._vehicle_attitude = VehicleAttitude()
         self._vehicle_status = VehicleStatus()
 
         self._vehicle_odometry_ts = mf.ApproximateTimeSynchronizer(
@@ -61,48 +70,70 @@ class OffboardControl:
         self._offboard_control_mode_pub = self._node.create_publisher(
             OffboardControlMode, "fmu/in/offboard_control_mode", PX4_QOS
         )
+        self._trejctory_setpoint_pub = self._node.create_publisher(
+            TrajectorySetpoint, "fmu/in/trajectory_setpoint", PX4_QOS
+        )
         self._heartbeat = self._node.create_timer(0.1, self.__heartbeat_cb)
 
         self._heartbeat_counter = 0
 
     @property
-    def is_in_offboard(self):
+    def enu(self) -> ENULocalOdometry:
+        return self._enu
+
+    @property
+    def is_in_offboard(self) -> bool:
         return self._vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD
 
     @property
-    def is_armed(self):
+    def is_armed(self) -> bool:
         return self._vehicle_status.arming_state == VehicleStatus.ARMING_STATE_ARMED
 
-    def arm(self):
+    def arm(self) -> None:
         self.__publish_vehicle_command(
             VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=1.0
         )
 
-    def disarm(self):
+    def disarm(self) -> None:
         self.__publish_vehicle_command(
             VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=0.0
         )
 
-    def land(self):
+    def land(self) -> None:
         self.__publish_vehicle_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
 
-    def return_to_launch(self):
+    def return_to_launch(self) -> None:
         self.__publish_vehicle_command(VehicleCommand.VEHICLE_CMD_NAV_RETURN_TO_LAUNCH)
 
-    def set_offboard_mode(self):
+    def set_offboard_mode(self) -> None:
         self.__publish_vehicle_command(
             VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=6.0
         )
 
-    def set_hold_mode(self):
+    def set_hold_mode(self) -> None:
         self.__publish_vehicle_command(
             VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=2.0
         )
 
+    @offboard_command
+    def fly_point(self, x: float, y: float, z: float, heading: None) -> None:
+        """
+        Send command to fly to point specified by x, y, z coordinates (in ENU convention).
+        """
+        msg = TrajectorySetpoint()
+        msg.position = enu_to_ned(x, y, z)
+        msg.yaw = enu_to_ned_heading(
+            heading if heading is not None else self._enu.heading
+        )
+        msg.timestamp = self.__timestamp_now()
+        self._trejctory_setpoint_pub.publish(msg)
+
     def __vehicle_odom_ts_cb(
         self, local_position: VehicleLocalPosition, attitude: VehicleAttitude
     ) -> None:
-        pass
+        self._vehicle_local_position = local_position
+        self._vehicle_attitude = attitude
+        self._enu = ENULocalOdometry.from_px4(local_position, attitude)
 
     def __vehicle_status_cb(self, msg: VehicleStatus) -> None:
         self._vehicle_status = msg
@@ -136,10 +167,10 @@ class OffboardControl:
         msg.timestamp = self.__timestamp_now()
         self._offboard_control_mode_pub.publish(msg)
 
-    def __heartbeat_cb(self):
+    def __heartbeat_cb(self) -> None:
         self.__publish_offboard_control_heartbeat_signal()
         if self._heartbeat_counter < self.HEARTBEAT_THRESHOLD:
             self._heartbeat_counter += 1
 
-    def __timestamp_now(self):
+    def __timestamp_now(self) -> int:
         return int(self._node.get_clock().now().nanoseconds / 1000)
