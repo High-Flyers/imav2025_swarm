@@ -1,13 +1,16 @@
 from rclpy.node import Node
 
+import message_filters as mf
+
 from px4_msgs.msg import (
     OffboardControlMode,
     VehicleCommand,
     VehicleLocalPosition,
     VehicleStatus,
+    VehicleAttitude,
 )
 
-from qos_profiles import PX4_QOS
+from flight_control.qos_profiles import PX4_QOS
 
 
 def offboard_command(func):
@@ -27,14 +30,28 @@ class OffboardControl:
         self._vehicle_local_position = VehicleLocalPosition()
         self._vehicle_status = VehicleStatus()
 
-        self._vehicle_local_position_sub = self._node.create_subscription(
-            VehicleLocalPosition,
-            "fmu/out/vehicle_local_position",
-            self.__vehicle_local_position_cb,
-            PX4_QOS,
+        self._vehicle_odometry_ts = mf.ApproximateTimeSynchronizer(
+            [
+                mf.Subscriber(
+                    self._node,
+                    VehicleLocalPosition,
+                    "fmu/out/vehicle_local_position",
+                    qos_profile=PX4_QOS,
+                ),
+                mf.Subscriber(
+                    self._node,
+                    VehicleAttitude,
+                    "fmu/out/vehicle_attitude",
+                    qos_profile=PX4_QOS,
+                ),
+            ],
+            slop=0.1,
+            queue_size=5,
+            allow_headerless=True,
         )
+        self._vehicle_odometry_ts.registerCallback(self.__vehicle_odom_ts_cb)
 
-        self._vehicle_status_sb = self._node.create_subscription(
+        self._vehicle_status_sub = self._node.create_subscription(
             VehicleStatus, "fmu/out/vehicle_status", self.__vehicle_status_cb, PX4_QOS
         )
 
@@ -42,7 +59,7 @@ class OffboardControl:
             VehicleCommand, "fmu/in/vehicle_command", PX4_QOS
         )
         self._offboard_control_mode_pub = self._node.create_publisher(
-            OffboardControl, "fmu/in/offboard_control_mode", PX4_QOS
+            OffboardControlMode, "fmu/in/offboard_control_mode", PX4_QOS
         )
         self._heartbeat = self._node.create_timer(0.1, self.__heartbeat_cb)
 
@@ -82,8 +99,10 @@ class OffboardControl:
             VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=2.0
         )
 
-    def __vehicle_local_position_cb(self, msg: VehicleLocalPosition) -> None:
-        self._vehicle_local_position = msg
+    def __vehicle_odom_ts_cb(
+        self, local_position: VehicleLocalPosition, attitude: VehicleAttitude
+    ) -> None:
+        pass
 
     def __vehicle_status_cb(self, msg: VehicleStatus) -> None:
         self._vehicle_status = msg

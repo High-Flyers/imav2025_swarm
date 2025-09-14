@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 
-from offboard_control import OffboardControl
+from flight_control.offboard_control import OffboardControl
 
 
 class MissionControlNode(Node):
@@ -10,13 +10,14 @@ class MissionControlNode(Node):
         self._offboard_control = OffboardControl(self)
 
     def run(self):
-        pass
+        while rclpy.ok():
+            rclpy.spin_once(self)
 
 
 def main():
+    rclpy.init()
+    node = MissionControlNode()
     try:
-        rclpy.init()
-        node = MissionControlNode()
         node.run()
     except KeyboardInterrupt:
         pass
