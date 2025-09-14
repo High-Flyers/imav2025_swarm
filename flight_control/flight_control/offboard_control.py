@@ -19,14 +19,6 @@ from flight_control.utils.frame_transforms import (
 )
 
 
-def offboard_command(func):
-    def wrapper(self, *args, **kwargs):
-        if self.is_in_offboard:
-            return func(*args, **kwargs)
-
-    return wrapper
-
-
 class OffboardControl:
     HEARTBEAT_THRESHOLD = 10
 
@@ -82,6 +74,13 @@ class OffboardControl:
         return self._enu
 
     @property
+    def is_ready(self) -> bool:
+        return (
+            self._heartbeat_counter >= self.HEARTBEAT_THRESHOLD
+            and self._enu is not None
+        )
+
+    @property
     def is_in_offboard(self) -> bool:
         return self._vehicle_status.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD
 
@@ -115,8 +114,15 @@ class OffboardControl:
             VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=2.0
         )
 
-    @offboard_command
-    def fly_point(self, x: float, y: float, z: float, heading: None) -> None:
+    def is_point_reached(self, x: float, y: float, z: float, epsilon=0.1) -> bool:
+        """
+        Check if the vehicle reached coordinates specified by ENU x, y, z.
+        """
+        current = self._enu.position()
+        target = (x, y, z)
+        return all(abs(c - t) < epsilon for c, t in zip(current, target))
+
+    def fly_point(self, x: float, y: float, z: float, heading=None) -> None:
         """
         Send command to fly to point specified by x, y, z coordinates (in ENU convention).
         """
@@ -156,7 +162,6 @@ class OffboardControl:
         msg.timestamp = self.__timestamp_now()
         self._vehicle_command_pub.publish(msg)
 
-    @offboard_command
     def __publish_offboard_control_heartbeat_signal(self) -> None:
         msg = OffboardControlMode()
         msg.position = True

@@ -22,7 +22,7 @@ def generate_launch_description():
             ),
             Node(
                 package="flight_control",
-                executable="mission_control",
+                executable="basic_mission",
                 namespace=namespace,
             ),
         ]

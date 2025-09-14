@@ -24,7 +24,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            f"mission_control = {package_name}.mission_control_node:main"
+            f"basic_mission = {package_name}.basic_mission_example_node:main"
         ],
     },
 )

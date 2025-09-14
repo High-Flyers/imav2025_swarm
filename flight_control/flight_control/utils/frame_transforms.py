@@ -59,22 +59,15 @@ class ENULocalOdometry:
     heading: float
 
     @classmethod
-    def from_px4(
-        self, local_position: VehicleLocalPosition, attitude: VehicleAttitude
-    ) -> None:
+    def from_px4(cls, local_position: VehicleLocalPosition, attitude: VehicleAttitude):
         """
         Initialize position and orientation data based on vehicle local position and attitude reported by px4 autopilot.
         """
-        self.x, self.y, self.z = ned_to_enu(
-            local_position.x, local_position.y, local_position.z
-        )
-        self.vx, self.vy, self.vz = ned_to_enu(
-            local_position.vx, local_position.vy, local_position.vz
-        )
-        self.qx, self.qy, self.qz, self.qw = frd_to_flu_quaternion(
-            *attitude.q[1:], w=attitude.q[0]
-        )
-        self.heading = -local_position.heading + (np.pi / 2.0)
+        x, y, z = ned_to_enu(local_position.x, local_position.y, local_position.z)
+        vx, vy, vz = ned_to_enu(local_position.vx, local_position.vy, local_position.vz)
+        qx, qy, qz, qw = frd_to_flu_quaternion(*attitude.q[1:], w=attitude.q[0])
+        heading = -local_position.heading + (np.pi / 2.0)
+        return ENULocalOdometry(x, y, z, vx, vy, vz, qx, qy, qz, qw, heading)
 
     def position(self):
         return self.x, self.y, self.z

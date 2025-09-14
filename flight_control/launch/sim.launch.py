@@ -8,11 +8,12 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument(
-            "namespace"
+            "namespace",
+            default_value=""
         ),
         Node(
             package="flight_control",
-            executable="mission_control",
+            executable="basic_mission",
             namespace=namespace
         )
     ])
