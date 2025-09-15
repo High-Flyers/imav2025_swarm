@@ -11,7 +11,10 @@ RUN apt-get update && apt-get -y --quiet --no-install-recommends install \
     curl \
     ros-dev-tools \
     git \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install -U numpy numpy-quaternion
 
 RUN groupadd --gid ${USER_GID} ${USERNAME} \
     && useradd -s /bin/bash --uid ${USER_UID} --gid ${USER_GID} -m ${USERNAME} \

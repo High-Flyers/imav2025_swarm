@@ -1,7 +1,5 @@
 #!/usr/bin/bash
 
-set -e
-
 # Check if NVIDIA GPU is supported
 if command -v nvidia-smi &> /dev/null && nvidia-smi &> /dev/null; then 
     echo "NVIDIA GPU detected. Setting DOCKER_GPU_PARAM to 'gpu=all'"

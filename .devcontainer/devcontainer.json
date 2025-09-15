@@ -25,7 +25,8 @@
                 "ms-iot.vscode-ros",
                 "twxs.cmake",
                 "ms-vscode.cpptools-extension-pack",
-                "vivaxy.vscode-conventional-commits"
+                "vivaxy.vscode-conventional-commits",
+                "charliermarsh.ruff"
             ]
         }
     },
