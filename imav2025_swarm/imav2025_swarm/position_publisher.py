@@ -27,7 +27,7 @@ class PositionPublisher(Node):
     def local_position_callback(self, msg: VehicleLocalPosition):
         pos_msg = PointStamped()
         pos_msg.header.stamp = self.get_clock().now().to_msg()
-        pos_msg.header.frame_id = f"px4_{self.drone_id}"
+        pos_msg.header.frame_id = f"{self.drone_id}"
         pos_msg.point.x = msg.x
         pos_msg.point.y = msg.y
         pos_msg.point.z = msg.z
