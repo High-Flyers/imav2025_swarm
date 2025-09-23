@@ -1,4 +1,4 @@
-FROM ghcr.io/high-flyers/ros-core:katest
+FROM ghcr.io/high-flyers/ros-core:latest
 
 ARG USERNAME=hf
 ARG ROS_DISTRO=humble
