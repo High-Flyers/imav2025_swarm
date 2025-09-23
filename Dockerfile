@@ -1,25 +1,9 @@
-FROM ros:humble-ros-base
+FROM ghcr.io/high-flyers/ros-core 
 
 ARG USERNAME=hf
 ARG ROS_DISTRO=humble
-ARG USER_UID=1000
-ARG USER_GID=${USER_UID}
-
-RUN apt-get update && apt-get -y --quiet --no-install-recommends install \
-    build-essential \
-    cmake \
-    curl \
-    ros-dev-tools \
-    git \
-    python3-pip \
-    && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install -U numpy numpy-quaternion
-
-RUN groupadd --gid ${USER_GID} ${USERNAME} \
-    && useradd -s /bin/bash --uid ${USER_UID} --gid ${USER_GID} -m ${USERNAME} \
-    && echo ${USERNAME} ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/${USERNAME} \
-    && chmod 0440 /etc/sudoers.d/${USERNAME}
 
 USER ${USERNAME}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -46,9 +30,6 @@ RUN source "/opt/ros/${ROS_DISTRO}/setup.bash" && \
     src/imav/scripts/build.sh
 
 RUN echo "source \"/opt/ros/${ROS_DISTRO}/setup.bash\"" >> "/home/${USERNAME}/.bashrc" && \
-    echo "source \"${ROS_WORKSPACE}/install/setup.bash\"" >> "/home/${USERNAME}/.bashrc"
+    echo "source \"${ROS_WS}/install/setup.bash\"" >> "/home/${USERNAME}/.bashrc"
 
-RUN sudo sed -i '$i source $ROS_WORKSPACE/install/setup.bash' /ros_entrypoint.sh
-
-ENTRYPOINT ["/ros_entrypoint.sh"]
 CMD ["/bin/bash"]
