@@ -3,8 +3,6 @@ FROM ghcr.io/high-flyers/ros-core:latest
 ARG USERNAME=hf
 ARG ROS_DISTRO=humble
 
-RUN pip3 install -U numpy numpy-quaternion
-
 USER ${USERNAME}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -16,6 +14,8 @@ RUN git clone "https://github.com/eProsima/Micro-XRCE-DDS-Agent" --branch v2.4.1
 RUN sudo apt-get update && sudo apt-get -y --quiet --no-install-recommends install \
     ros-${ROS_DISTRO}-rviz2 \
     && sudo rm -rf /var/lib/apt/lists/*
+
+RUN sudo pip3 install -U numpy numpy-quaternion
 
 WORKDIR ${ROS_WS}
 RUN source "/opt/ros/${ROS_DISTRO}/setup.bash" && \
