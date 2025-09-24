@@ -41,9 +41,7 @@ jobs:
           file: ./Dockerfile
           push: true
           platforms: ${{ matrix.platform }}
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.arch }}
-          provenance: false
-          sbom: false
+          tags: ${{ matrix.arch }}
 
   manifest:
     runs-on: ubuntu-latest
