@@ -3,8 +3,7 @@ FROM ghcr.io/high-flyers/ros-core:latest
 ARG USERNAME=hf
 ARG ROS_DISTRO=humble
 
-RUN pip3 install -U numpy==1.26.4 \
-    && pip3 install numpy-quaternion --no-build-isolation --no-cache-dir
+RUN pip3 install -U numpy numpy-quaternion
 
 USER ${USERNAME}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
