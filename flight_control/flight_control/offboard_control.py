@@ -22,7 +22,8 @@ from flight_control.utils.frame_transforms import (
 class OffboardControl:
     HEARTBEAT_THRESHOLD = 10
 
-    def __init__(self, node: Node) -> None:
+    def __init__(self, node: Node, id: int = 0) -> None:
+        self._id = id
         self._enu: ENULocalOdometry = None
 
         self._node = node
@@ -30,6 +31,7 @@ class OffboardControl:
         self._vehicle_local_position = VehicleLocalPosition()
         self._vehicle_attitude = VehicleAttitude()
         self._vehicle_status = VehicleStatus()
+
 
         self._vehicle_odometry_ts = mf.ApproximateTimeSynchronizer(
             [
@@ -146,6 +148,7 @@ class OffboardControl:
 
     def __publish_vehicle_command(self, command: int, **params) -> None:
         msg = VehicleCommand()
+        msg.target_system = self._id + 1
         msg.command = command
         msg.param1 = params.get("param1", 0.0)
         msg.param2 = params.get("param2", 0.0)
@@ -154,7 +157,6 @@ class OffboardControl:
         msg.param5 = params.get("param5", 0.0)
         msg.param6 = params.get("param6", 0.0)
         msg.param7 = params.get("param7", 0.0)
-        msg.target_system = 1
         msg.target_component = 1
         msg.source_system = 1
         msg.source_component = 1
