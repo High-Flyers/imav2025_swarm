@@ -3,6 +3,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import PointStamped
 from px4_msgs.msg import VehicleLocalPosition
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSDurabilityPolicy, QoSHistoryPolicy
+from flight_control.utils.frame_transforms import ned_to_enu
 
 class PositionPublisher(Node):
     def __init__(self):
@@ -28,9 +29,10 @@ class PositionPublisher(Node):
         pos_msg = PointStamped()
         pos_msg.header.stamp = self.get_clock().now().to_msg()
         pos_msg.header.frame_id = f"{self.drone_id}"
-        pos_msg.point.x = msg.x
-        pos_msg.point.y = msg.y
-        pos_msg.point.z = msg.z
+        enu = ned_to_enu(msg.x, msg.y, msg.z)
+        pos_msg.point.x = enu[0]
+        pos_msg.point.y = enu[1]
+        pos_msg.point.z = enu[2]
         self.publisher_.publish(pos_msg)
         self.get_logger().debug(f'Published position for {pos_msg.header.frame_id}')
 
