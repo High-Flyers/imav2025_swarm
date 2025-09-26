@@ -2,11 +2,11 @@ name: Build and Push Docker Image (native amd64 & arm64)
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "workflow"]
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: high-flyers/imav-2025
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
             runner: ubuntu-latest
             platform: linux/amd64
           - arch: arm64
-            runner: ubuntu-24.04-arm64   # or "self-hosted" if you have your own Pi/ARM runner
+            runner: ubuntu-24.04-arm
             platform: linux/arm64
     runs-on: ${{ matrix.runner }}
     permissions:
@@ -41,7 +41,9 @@ jobs:
           file: ./Dockerfile
           push: true
           platforms: ${{ matrix.platform }}
-          tags: ${{ matrix.arch }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.arch }} 
 
   manifest:
     runs-on: ubuntu-latest
