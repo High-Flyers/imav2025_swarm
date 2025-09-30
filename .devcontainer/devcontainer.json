@@ -1,6 +1,6 @@
 {
     "name": "imav-2025",
-    "image": "highflyers/imav-2025:latest",
+    "image": "ghcr.io/high-flyers/imav-2025:latest",
     "remoteUser": "hf",
     "runArgs": [
         "--network=host",
