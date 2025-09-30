@@ -22,7 +22,7 @@ RUN source "/opt/ros/${ROS_DISTRO}/setup.bash" && \
     colcon build
 
 WORKDIR ${ROS_WS}/src
-COPY --chown=${USER_UID}:${USER_GID} . imav
+COPY --chown=${USERNAME} . imav
 
 WORKDIR ${ROS_WS}/src/imav
 RUN source "/opt/ros/${ROS_DISTRO}/setup.bash" && \
