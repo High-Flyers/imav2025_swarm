@@ -32,8 +32,4 @@ RUN echo "source \"/opt/ros/${ROS_DISTRO}/setup.bash\"" >> "/home/${USERNAME}/.b
     echo "source \"${ROS_WS}/install/setup.bash\"" >> "/home/${USERNAME}/.bashrc" && \
     echo "source \"${ROS_WS}/src/imav/install/setup.bash\"" >> "/home/${USERNAME}/.bashrc"
 
-RUN sudo sed -i '$i source $ROS_WS/install/setup.bash' /ros_entrypoint.sh && \
-    sudo sed -i '$i source $ROS_WS/src/imav/install/setup.bash' /ros_entrypoint.sh
-
-ENTRYPOINT ["/ros_entrypoint.sh"]
-CMD ["/bin/bash"]
+CMD ["/bin/bash", "-l"]
