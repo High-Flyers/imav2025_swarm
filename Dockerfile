@@ -32,4 +32,4 @@ RUN echo "source \"/opt/ros/${ROS_DISTRO}/setup.bash\"" >> "/home/${USERNAME}/.b
     echo "source \"${ROS_WS}/install/setup.bash\"" >> "/home/${USERNAME}/.bashrc" && \
     echo "source \"${ROS_WS}/src/imav/install/setup.bash\"" >> "/home/${USERNAME}/.bashrc"
 
-CMD ["/bin/bash", "-l"]
+CMD ["/bin/bash"]
