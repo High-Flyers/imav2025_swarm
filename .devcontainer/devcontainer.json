@@ -1,12 +1,12 @@
 {
     "name": "imav-2025",
-    "image": "highflyers/imav-2025:latest",
+    "image": "ghcr.io/high-flyers/imav-2025:latest",
     "remoteUser": "hf",
     "runArgs": [
         "--network=host",
         "--ipc=host",
         "--volume=/tmp/.X11-unix:/tmp/.X11-unix",
-        "--${localEnv:DOCKER_GPU_PARAM}",
+        "${localEnv:DOCKER_GPU_PARAM}",
         "--privileged"
     ],
     "workspaceMount": "source=${localWorkspaceFolder}/,target=/home/hf/ws/src/imav,type=bind,consistency=cached",
@@ -30,5 +30,5 @@
             ]
         }
     },
-    "onCreateCommand": "./scripts/build.sh ../.. --symlink-install"
+    "onCreateCommand": "./scripts/build.sh ./ --symlink-install"
 }

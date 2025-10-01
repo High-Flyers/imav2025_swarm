@@ -1,10 +1,14 @@
 {
     "python.autoComplete.extraPaths": [
+        "/home/hf/ws/src/imav/build/imav2025_swarm",
+        "/home/hf/ws/src/imav/install/imav2025_swarm/lib/python3.10/site-packages",
         "/home/hf/ws/install/px4_msgs/local/lib/python3.10/dist-packages",
         "/opt/ros/humble/lib/python3.10/site-packages",
         "/opt/ros/humble/local/lib/python3.10/dist-packages"
     ],
     "python.analysis.extraPaths": [
+        "/home/hf/ws/src/imav/build/imav2025_swarm",
+        "/home/hf/ws/src/imav/install/imav2025_swarm/lib/python3.10/site-packages",
         "/home/hf/ws/install/px4_msgs/local/lib/python3.10/dist-packages",
         "/opt/ros/humble/lib/python3.10/site-packages",
         "/opt/ros/humble/local/lib/python3.10/dist-packages"

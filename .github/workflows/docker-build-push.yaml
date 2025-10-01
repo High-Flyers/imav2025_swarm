@@ -3,6 +3,7 @@ name: Build and Push Docker Image (native amd64 & arm64)
 on:
   push:
     branches: ["main", "workflow"]
+  pull_request:
 
 env:
   REGISTRY: ghcr.io
@@ -34,6 +35,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set image tags
+        id: vars
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BRANCH_NAME="${{ github.head_ref }}"
+            SAFE_BRANCH=$(echo "$BRANCH_NAME" | tr '/' '-' | tr '[:upper:]' '[:lower:]')
+            echo "TAG=$SAFE_BRANCH" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=latest" >> $GITHUB_OUTPUT
+          fi
+
       - name: Build and push image (${{ matrix.platform }})
         uses: docker/build-push-action@v5
         with:
@@ -42,12 +54,13 @@ jobs:
           push: true
           platforms: ${{ matrix.platform }}
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.arch }} 
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.TAG }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.arch }}-${{ steps.vars.outputs.TAG }}
 
   manifest:
     runs-on: ubuntu-latest
     needs: build
+    if: github.event_name == 'push'
     permissions:
       packages: write
     steps:
@@ -62,5 +75,5 @@ jobs:
         run: |
           docker buildx imagetools create \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:amd64 \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arm64
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:amd64-latest \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arm64-latest
