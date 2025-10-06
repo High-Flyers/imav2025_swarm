@@ -1,0 +1,4 @@
+swarm_control:
+  ros__arguments:
+    latitude:  50.2690730
+    longitude: 18.6718280
