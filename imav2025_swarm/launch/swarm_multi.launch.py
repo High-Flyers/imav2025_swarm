@@ -13,7 +13,15 @@ def generate_launch_description():
     imav_package_path = get_package_share_path("imav2025_swarm")
 
     swarm_count = LaunchConfiguration("swarm_count")
+    params_file = LaunchConfiguration("params_file")
+
     swarm_count_arg = DeclareLaunchArgument("swarm_count")
+    params_file_arg = DeclareLaunchArgument(
+        "params_file",
+        default_value=(
+            imav_package_path / "params" / "imav_sim_params.yaml"
+        ).as_posix(),
+    )
 
     def actions_with_context(context):
         return [
@@ -21,7 +29,10 @@ def generate_launch_description():
                 PythonLaunchDescriptionSource(
                     (imav_package_path / "launch" / "swarm_member.launch.py").as_posix()
                 ),
-                launch_arguments={"drone_id": str(drone_id + 1)}.items(),
+                launch_arguments={
+                    "drone_id": str(drone_id + 1),
+                    "params_file": params_file,
+                }.items(),
             )
             for drone_id in range(int(swarm_count.perform(context)))
         ]
@@ -29,6 +40,7 @@ def generate_launch_description():
     ld = LaunchDescription()
 
     ld.add_action(swarm_count_arg)
+    ld.add_action(params_file_arg)
     ld.add_action(OpaqueFunction(function=actions_with_context))
 
     return ld

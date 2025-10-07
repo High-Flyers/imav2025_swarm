@@ -60,3 +60,7 @@ class WaypointTracker:
         self._target_position = lla_to_enu(
             latitude, longitude, enu.ref_alt, enu.ref_lat, enu.ref_lon, enu.ref_alt
         )
+        self._node.get_logger().info(f"global target coords: {latitude} {longitude}")
+        self._node.get_logger().info(
+            f"local target coords: {self._target_position[0]} {self._target_position[1]}"
+        )
