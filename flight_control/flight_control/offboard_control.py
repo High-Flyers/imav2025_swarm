@@ -18,7 +18,6 @@ from flight_control.utils.frame_transforms import (
     enu_to_ned_heading,
 )
 
-
 class OffboardControl:
     HEARTBEAT_THRESHOLD = 10
 
@@ -128,6 +127,9 @@ class OffboardControl:
         """
         Send command to fly to point specified by x, y, z coordinates (in ENU convention).
         """
+        if not self.is_in_offboard:
+            return
+
         msg = TrajectorySetpoint()
         msg.position = enu_to_ned(x, y, z)
         msg.yaw = enu_to_ned_heading(
@@ -165,6 +167,9 @@ class OffboardControl:
         self._vehicle_command_pub.publish(msg)
 
     def __publish_offboard_control_heartbeat_signal(self) -> None:
+        if not self.is_in_offboard:
+            return
+        
         msg = OffboardControlMode()
         msg.position = True
         msg.velocity = True
