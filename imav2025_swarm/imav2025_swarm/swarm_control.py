@@ -4,6 +4,8 @@ from rclpy.node import Node
 from geometry_msgs.msg import PointStamped
 from std_msgs.msg import String
 import numpy as np
+
+from imav2025_swarm.waypoint_tracker import WaypointTracker
 from flight_control.offboard_control import OffboardControl
 
 
@@ -34,6 +36,8 @@ class SwarmControlNode(Node):
             10
         )
         self.offboard = OffboardControl(self, self.id)
+        if self.id == 1:
+            self.waypoint_tracker = WaypointTracker(self, self.offboard)
         self.timer = self.create_timer(0.1, self.control_loop)
         self.spring_constant = 0.5
         self.graph = None
@@ -46,6 +50,7 @@ class SwarmControlNode(Node):
             msg.point.y,
             msg.point.z
         ])
+
     def state_callback(self, msg: String):
         # msg.data format: "drone_id:STATE"
         try:
