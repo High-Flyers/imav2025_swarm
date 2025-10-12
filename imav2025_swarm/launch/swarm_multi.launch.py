@@ -15,7 +15,7 @@ def generate_launch_description():
     swarm_count = LaunchConfiguration("swarm_count")
     params_file = LaunchConfiguration("params_file")
 
-    swarm_count_arg = DeclareLaunchArgument("swarm_count")
+    swarm_count_arg = DeclareLaunchArgument("swarm_count", default_value="3")
     params_file_arg = DeclareLaunchArgument(
         "params_file",
         default_value=(
