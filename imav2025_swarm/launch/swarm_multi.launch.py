@@ -17,7 +17,7 @@ def generate_launch_description():
     params_file = LaunchConfiguration("params_file")
 
     ns_prefix_arg = DeclareLaunchArgument("ns_prefix", default_value="uav")
-    swarm_count_arg = DeclareLaunchArgument("swarm_count")
+    swarm_count_arg = DeclareLaunchArgument("swarm_count", default_value="3")
     params_file_arg = DeclareLaunchArgument(
         "params_file",
         default_value=(

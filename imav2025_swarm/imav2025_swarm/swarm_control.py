@@ -10,6 +10,8 @@ import numpy as np
 from imav2025_swarm.waypoint_tracker import WaypointTracker
 from flight_control.offboard_control import OffboardControl
 
+LEADER_ID = 1
+VELOCITY_LIMIT = 3.0
 
 class SwarmControlNode(Node):
     STATES = ["INIT", "TAKING_OFF", "IN_AIR", "SWARMING"]
@@ -49,7 +51,7 @@ class SwarmControlNode(Node):
         )
 
         self.timer = self.create_timer(0.1, self.control_loop)
-        self.spring_constant = 0.5
+        self.spring_constant = 1.0
         self.graph = None
 
     def mission_start_callback(self, _, response):
@@ -88,9 +90,7 @@ class SwarmControlNode(Node):
         for i, id_i in enumerate(ids):
             for j, id_j in enumerate(ids):
                 if i != j:
-                    graph[i, j] = np.linalg.norm(
-                        self.positions[id_i] - self.positions[id_j]
-                    )
+                    graph[i, j] = np.linalg.norm(self.positions[id_i][:2] - self.positions[id_j][:2])
         return graph, ids
 
     def control_loop(self):
@@ -130,30 +130,45 @@ class SwarmControlNode(Node):
 
         # SWARMING: run spring control
         if self.state == "SWARMING":
-            if self.id == 1:
+            if self.id == LEADER_ID:
                 return  # Leader hovers in place
+
             if self.graph is None or len(self.positions) != self.graph.shape[0]:
                 self.graph, self.id_list = self.compute_graph()
+
             idx = self.id_list.index(self.local_id)
             my_pos = self.positions[self.local_id]
             velocity = np.zeros(3)
+
             for j, other_id in enumerate(self.id_list):
                 if other_id == self.local_id:
                     continue
-                displacement = self.positions[other_id] - my_pos
+                displacement = self.positions[other_id][:2] - my_pos[:2]
                 distance = np.linalg.norm(displacement)
-                direction = displacement / distance if distance != 0 else np.zeros(3)
+                direction = displacement / distance if distance != 0 else np.zeros(2)
                 spring_length = self.graph[idx, j]
                 velocity_magnitude = (
                     (distance - spring_length) / self.spring_constant
                 ) ** 2
                 if distance < spring_length:
                     velocity_magnitude = -velocity_magnitude
-                velocity += velocity_magnitude * direction
+                velocity_2d = velocity_magnitude * direction
+                velocity[0] += velocity_2d[0]
+                velocity[1] += velocity_2d[1]
+
             if len(self.id_list) > 1:
-                velocity /= len(self.id_list) - 1
-            target = my_pos + velocity * 0.1
-            self.offboard.fly_point(target[0], target[1], target[2])
+                velocity /= (len(self.id_list) - 1)
+
+            leader_pos = self.positions["px4_" + str(LEADER_ID)]
+            altitude_diff = leader_pos[2] - my_pos[2]
+            velocity[2] = (altitude_diff / self.spring_constant) ** 2
+
+            if altitude_diff < 0:
+                velocity[2] = -velocity[2]
+
+            self.get_logger().info(f"[{self.id}] Velocity command: {velocity}, Position: {my_pos}, Leader: {leader_pos}", throttle_duration_sec=1)
+            self.velocity = np.clip(velocity, -VELOCITY_LIMIT, VELOCITY_LIMIT)
+            self.offboard.fly_vel(velocity[0], velocity[1], velocity[2])
 
 
 def main(args=None):
