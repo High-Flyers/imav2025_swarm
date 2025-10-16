@@ -8,6 +8,8 @@
   <license>TODO: License declaration</license>
 
   <depend>geometry_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
 
   <test_depend>python3-pytest</test_depend>
 
