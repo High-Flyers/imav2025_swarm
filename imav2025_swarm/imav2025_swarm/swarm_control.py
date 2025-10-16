@@ -23,7 +23,7 @@ class SwarmControlNode(Node):
         self.get_logger().info(f"Drone ID: {self.id}")
         self.state = "IDLE"
         self.last_state = None
-        self.target_takeoff_height = 5.0
+        self.target_takeoff_height = 0.5
         self.position_sub = self.create_subscription(
             PointStamped, "/imav/swarm_positions", self.position_callback, 10
         )
