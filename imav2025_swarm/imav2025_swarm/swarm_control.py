@@ -16,10 +16,16 @@ class SwarmControlNode(Node):
 
     def __init__(self):
         super().__init__("swarm_control")
+
+        self.declare_parameter("ns_prefix", value="uav")
+        self.ns_prefix = (
+            self.get_parameter("ns_prefix").get_parameter_value().string_value
+        )
+
         self.positions = {}  # drone_id: np.array([x, y, z])
         self.states = {}  # drone_id: state string
         self.local_id = self.get_namespace().strip("/")
-        self.id = int(self.local_id.replace("px4_", ""))
+        self.id = int(self.local_id.replace(f"{self.ns_prefix}_", ""))
         self.get_logger().info(f"Drone ID: {self.id}")
         self.state = "IDLE"
         self.last_state = None
@@ -38,7 +44,6 @@ class SwarmControlNode(Node):
                 Trigger, "swarm_start", self.swarm_start_callback
             )
 
-
         self.mission_start_srv = self.create_service(
             Trigger, "mission_start", self.mission_start_callback
         )
@@ -52,10 +57,12 @@ class SwarmControlNode(Node):
         response.success = True
         response.message = f"Mission started on drone: {self.local_id}"
         return response
-    
+
     def swarm_start_callback(self, _, response):
         for drone_id in self.states.keys():
-            mission_start_client = self.create_client(Trigger, f"/{drone_id}/mission_start")
+            mission_start_client = self.create_client(
+                Trigger, f"/{drone_id}/mission_start"
+            )
             mission_start_client.call_async(Trigger.Request())
 
         response.success = True
