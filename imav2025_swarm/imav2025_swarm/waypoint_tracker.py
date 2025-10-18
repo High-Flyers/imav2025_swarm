@@ -10,6 +10,9 @@ class WaypointTracker:
         self._node = node
         self._offboard = offboard_control
         self._target_position = None
+        self._initial_position = None
+        self._flight_altitude = 5.0
+        self._altitude_reached = False
         self._states = {}
 
         self._node.declare_parameter("latitude", value=0.0)
@@ -36,18 +39,33 @@ class WaypointTracker:
     def __control_loop(self):
         if self._target_position is None and self._offboard.enu is not None:
             self.__initialize_target_position()
+            self._initial_position = self._offboard.enu
 
         if not self.is_swarming or self._target_position is None:
             return
 
-        if self._offboard.is_point_reached(
-            self._target_position[0], self._target_position[1], 5.0
-        ):
-            self._offboard.land()
+        if not self._altitude_reached:
+            self._offboard.fly_point(
+                self._initial_position.x,
+                self._initial_position.y,
+                self._flight_altitude,
+            )
 
-        self._offboard.fly_point(
-            self._target_position[0], self._target_position[1], 5.0
-        )
+            if abs(self._offboard.enu.z - self._flight_altitude) < 0.2:
+                self._altitude_reached = True
+        else:
+            if self._offboard.is_point_reached(
+                self._target_position[0],
+                self._target_position[1],
+                self._flight_altitude,
+            ):
+                self._offboard.land()
+
+            self._offboard.fly_point(
+                self._target_position[0],
+                self._target_position[1],
+                self._flight_altitude,
+            )
 
     def __initialize_target_position(self):
         latitude = (
