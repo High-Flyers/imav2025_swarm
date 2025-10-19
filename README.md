@@ -4,19 +4,19 @@
 
 It is recommended to use tmux.
 
-Running MicroXRCEAgnt:
+Running MicroXRCEAgent:
 ```
 MicroXRCEAgent serial -D /dev/ttyAMA0 -b 921600
 ```
 
 Running the system:
 ```
-ros2 launch imav2025_swarm swarm_multi.launch.py swarm_count:=<int> ns_prefix:=<px4|uav>
+ros2 launch imav2025_swarm swarm_member.launch.py drone_id:=<int> ns_prefix:=<px4|uav>
 ```
 
 Starting the mission:
 ```
-ros2 service call /p<px4|uav>_1/swarm_start std_srvs/srv/Trigger "{}"
+ros2 service call /<px4|uav>_1/swarm_start std_srvs/srv/Trigger "{}"
 ```
 
 ### PX4 parameters
