@@ -17,6 +17,8 @@ RUN sudo apt-get update && sudo apt-get -y --quiet --no-install-recommends insta
 
 RUN sudo pip3 install -U numpy numpy-quaternion
 
+RUN sudo usermod -aG dialout ${USERNAME}
+
 WORKDIR ${ROS_WS}
 RUN source "/opt/ros/${ROS_DISTRO}/setup.bash" && \
     colcon build
