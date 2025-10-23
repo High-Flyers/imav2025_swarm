@@ -11,6 +11,7 @@ from rclpy.qos import (
     QoSHistoryPolicy,
 )
 from flight_control.utils.frame_transforms import ned_to_enu, lla_to_enu
+from nav_msgs.msg import Odometry
 
 
 class PositionPublisher(Node):
@@ -19,9 +20,7 @@ class PositionPublisher(Node):
         self.drone_id = self.get_namespace().strip("/")
         self.id = self.drone_id[-1]
         self.ns_prefix = self.get_namespace()[:-2]
-        self.publisher_ = self.create_publisher(
-            PointStamped, "/imav/swarm_positions", 0
-        )
+        self.publisher_ = self.create_publisher(Odometry, '/imav/swarm_positions', 0)
 
         qos_profile_sub = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
@@ -61,15 +60,19 @@ class PositionPublisher(Node):
         else:
             self.make_current_transform(msg)
 
-        pos_msg = PointStamped()
-        pos_msg.header.stamp = self.get_clock().now().to_msg()
-        pos_msg.header.frame_id = f"{self.drone_id}"
+        odom_msg = Odometry()
+        odom_msg.header.stamp = self.get_clock().now().to_msg()
+        odom_msg.header.frame_id = f"{self.drone_id}"
         enu = ned_to_enu(msg.x, msg.y, msg.z)
-        pos_msg.point.x = enu[0]
-        pos_msg.point.y = enu[1]
-        pos_msg.point.z = enu[2]
-        self.publisher_.publish(pos_msg)
-        self.get_logger().debug(f"Published position for {pos_msg.header.frame_id}")
+        vel_enu = ned_to_enu(msg.vx, msg.vy, msg.vz)
+        odom_msg.pose.pose.position.x = enu[0]
+        odom_msg.pose.pose.position.y = enu[1]
+        odom_msg.pose.pose.position.z = enu[2]
+        odom_msg.twist.twist.linear.x = vel_enu[0]
+        odom_msg.twist.twist.linear.y = vel_enu[1]
+        odom_msg.twist.twist.linear.z = vel_enu[2]
+        self.publisher_.publish(odom_msg)
+        self.get_logger().debug(f'Published position for {odom_msg.header.frame_id}')
 
     def reference_position_cb(self, msg: VehicleLocalPosition) -> None:
         self.reference_local_position = msg
@@ -113,7 +116,6 @@ class PositionPublisher(Node):
         ts.transform.translation.z = enu[2]
 
         self.current_position_broadcaster.sendTransform(ts)
-
 
 def main(args=None):
     rclpy.init(args=args)
