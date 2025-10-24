@@ -45,7 +45,7 @@ class PositionPublisher(Node):
         )
 
         self.reference_local_position: VehicleLocalPosition = None
-        self.reference_transform_sent = False
+        self.should_sent_reference_transform = self.id != "1"
 
         self.reference_frame_static_broadcaster = StaticTransformBroadcaster(self)
         self.current_position_broadcaster = TransformBroadcaster(self)
@@ -54,12 +54,12 @@ class PositionPublisher(Node):
         if self.reference_local_position is None:
             return
 
-        if self.id != "1" and not self.reference_transform_sent:
+        if self.should_sent_reference_transform:
             self.make_reference_transform(msg)
-            self.reference_transform_sent = True
+            self.should_sent_reference_transform = False
             return
-
-        self.make_current_transform(msg)
+        else:
+            self.make_current_transform(msg)
 
         pos_msg = PointStamped()
         pos_msg.header.stamp = self.get_clock().now().to_msg()
