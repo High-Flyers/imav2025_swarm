@@ -1,8 +1,17 @@
+from enum import Enum, auto
+
 from rclpy.node import Node
 from std_msgs.msg import String
 
 from flight_control.offboard_control import OffboardControl
 from flight_control.utils.frame_transforms import lla_to_enu
+
+
+class WTState(Enum):
+    IDLE = auto()  # waiting for swarming
+    ALTITUDE = auto()  # reaching the flight altitude
+    WAYPOINT = auto()  # reaching the target waypoint
+    LAND = auto()  # landing
 
 
 class WaypointTracker:
@@ -13,7 +22,8 @@ class WaypointTracker:
         self._initial_position = None
         self._flight_altitude = 5.0
         self._altitude_reached = False
-        self._states = {}
+        self._swarm_states = {}
+        self._state = WTState.IDLE
 
         self._node.declare_parameter("latitude", value=0.0)
         self._node.declare_parameter("longitude", value=0.0)
@@ -26,13 +36,13 @@ class WaypointTracker:
 
     @property
     def is_swarming(self):
-        return all(state == "SWARMING" for state in self._states.values())
+        return all(state == "SWARMING" for state in self._swarm_states.values())
 
     def __state_callback(self, msg: String) -> None:
         # msg.data format: "drone_id:STATE"
         try:
             drone_id, state = msg.data.split(":")
-            self._states[drone_id] = state
+            self._swarm_states[drone_id] = state
         except Exception:
             pass
 
@@ -44,28 +54,41 @@ class WaypointTracker:
         if not self.is_swarming or self._target_position is None:
             return
 
-        if not self._altitude_reached:
+        if self._state == WTState.IDLE:
+            self._state = WTState.ALTITUDE
+            return
+
+        if self._state == WTState.ALTITUDE:
             self._offboard.fly_point(
                 self._initial_position.x,
                 self._initial_position.y,
                 self._flight_altitude,
             )
 
-            if abs(self._offboard.enu.z - self._flight_altitude) < 0.2:
-                self._altitude_reached = True
-        else:
-            if self._offboard.is_point_reached(
-                self._target_position[0],
-                self._target_position[1],
-                self._flight_altitude,
-            ):
-                self._offboard.land()
+            if abs(self._offboard.enu.z - self._flight_altitude) < 0.1:
+                self._state = WTState.WAYPOINT
 
+            return
+
+        if self._state == WTState.WAYPOINT:
             self._offboard.fly_point(
                 self._target_position[0],
                 self._target_position[1],
                 self._flight_altitude,
             )
+
+            if self._offboard.is_point_reached(
+                self._target_position[0],
+                self._target_position[1],
+                self._flight_altitude,
+            ):
+                self._state = WTState.LAND
+
+            return
+
+        if self._state == WTState.LAND:
+            self._offboard.land()
+            return
 
     def __initialize_target_position(self):
         latitude = (

@@ -18,6 +18,7 @@ from flight_control.utils.frame_transforms import (
     enu_to_ned_heading,
 )
 
+
 class OffboardControl:
     HEARTBEAT_THRESHOLD = 10
 
@@ -30,7 +31,6 @@ class OffboardControl:
         self._vehicle_local_position = VehicleLocalPosition()
         self._vehicle_attitude = VehicleAttitude()
         self._vehicle_status = VehicleStatus()
-
 
         self._vehicle_odometry_ts = mf.ApproximateTimeSynchronizer(
             [
@@ -73,6 +73,14 @@ class OffboardControl:
     @property
     def enu(self) -> ENULocalOdometry:
         return self._enu
+
+    @property
+    def local_position(self) -> VehicleLocalPosition:
+        return self._vehicle_local_position
+
+    @property
+    def attitude(self) -> VehicleAttitude:
+        return self._vehicle_attu
 
     @property
     def is_ready(self) -> bool:
