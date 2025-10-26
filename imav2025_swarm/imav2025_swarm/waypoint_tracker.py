@@ -12,6 +12,7 @@ class WTState(Enum):
     ALTITUDE = auto()  # reaching the flight altitude
     WAYPOINT = auto()  # reaching the target waypoint
     LAND = auto()  # landing
+    END = auto() # no more waypoint tracking
 
 
 class WaypointTracker:
@@ -21,6 +22,7 @@ class WaypointTracker:
         self._target_position = None
         self._initial_position = None
         self._flight_altitude = 5.0
+        self._land_altitude = 0.4
         self._altitude_reached = False
         self._swarm_states = {}
         self._state = WTState.IDLE
@@ -87,7 +89,15 @@ class WaypointTracker:
             return
 
         if self._state == WTState.LAND:
-            self._offboard.land()
+            self._offboard.fly_point(
+                self._target_position[0], self._target_position[1], self._land_altitude
+            )
+            if self._offboard.is_point_reached(
+                self._target_position[0],
+                self._target_position[1],
+                self._land_altitude,
+            ):
+                self._state = WTState.END
             return
 
     def __initialize_target_position(self):

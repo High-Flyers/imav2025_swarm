@@ -12,7 +12,7 @@ from flight_control.offboard_control import OffboardControl
 
 
 class SwarmControlNode(Node):
-    STATES = ["INIT", "TAKING_OFF", "IN_AIR", "SWARMING"]
+    STATES = ["INIT", "TAKING_OFF", "IN_AIR", "SWARMING", "HOVER", "LANDING"]
 
     def __init__(self):
         super().__init__("swarm_control")
@@ -30,6 +30,7 @@ class SwarmControlNode(Node):
         self.state = "IDLE"
         self.last_state = None
         self.target_takeoff_height = 0.5
+        self.target_landing_height = 0.5
         self.position_sub = self.create_subscription(
             PointStamped, "/imav/swarm_positions", self.position_callback, 10
         )
@@ -154,6 +155,25 @@ class SwarmControlNode(Node):
                 velocity /= len(self.id_list) - 1
             target = my_pos + velocity * 0.1
             self.offboard.fly_point(target[0], target[1], target[2])
+
+            x, y, z = self.offboard.enu.position()
+            if z <= self.target_landing_height:
+                self.offboard.fly_point(x, y, self.target_landing_height)
+                self.state = "HOVER"
+                return
+
+        # HOVER: wait for all drones to HOVER
+        if self.state == "HOVER":
+            if all(
+                state == "HOVER" for state in self.states.values() if state is not None
+            ) and len(self.states) == len(self.positions):
+                self.state = "LANDING"
+            return
+
+        # LANDING: land
+        if self.state == "LANDING":
+            self.offboard.land()
+            return
 
 
 def main(args=None):
