@@ -12,9 +12,11 @@ from flight_control.offboard_control import OffboardControl
 
 LEADER_ID = 1
 VELOCITY_LIMIT = 2.0
-TAKEOFF_HEIGHT = 2.0
+TAKEOFF_HEIGHT = 0.5
+LANDING_HEIGHT = 0.5
 MIN_VELOCITY = 0.1
 SPRING_CONSTANT = 0.5
+
 
 class SwarmControlNode(Node):
     STATES = ["INIT", "ARMING", "TAKING_OFF", "IN_AIR", "SWARMING", "HOVER", "LANDING"]
@@ -36,8 +38,6 @@ class SwarmControlNode(Node):
         self.get_logger().info(f"Drone ID: {self.id}")
         self.state = "IDLE"
         self.last_state = None
-        self.target_takeoff_height = 1.0
-        self.target_landing_height = 0.5
         self.position_sub = self.create_subscription(
             Odometry, "/imav/swarm_positions", self.position_callback, 10
         )
@@ -103,7 +103,9 @@ class SwarmControlNode(Node):
         for i, id_i in enumerate(ids):
             for j, id_j in enumerate(ids):
                 if i != j:
-                    graph[i, j] = np.linalg.norm(self.positions[id_i][:2] - self.positions[id_j][:2])
+                    graph[i, j] = np.linalg.norm(
+                        self.positions[id_i][:2] - self.positions[id_j][:2]
+                    )
         return graph, ids
 
     def control_loop(self):
@@ -115,7 +117,11 @@ class SwarmControlNode(Node):
             self.last_state = self.state
 
         # Wait for offboard ready and our position
-        if not self.offboard.is_ready or self.local_id not in self.positions or (self.is_leader and self.leader_horizontal_velocities is None):
+        if (
+            not self.offboard.is_ready
+            or self.local_id not in self.positions
+            or (self.is_leader and self.leader_horizontal_velocities is None)
+        ):
             self.offboard.set_offboard_mode()
             return
 
@@ -137,7 +143,7 @@ class SwarmControlNode(Node):
         if self.state == "TAKING_OFF":
             my_pos = self.positions[self.local_id]
             self.offboard.fly_point(my_pos[0], my_pos[1], TAKEOFF_HEIGHT)
-            if abs(my_pos[2] - TAKEOFF_HEIGHT) < 0.2:
+            if abs(my_pos[2] - TAKEOFF_HEIGHT) < 0.1:
                 self.state = "IN_AIR"
             return
 
@@ -168,9 +174,7 @@ class SwarmControlNode(Node):
                 distance = np.linalg.norm(displacement)
                 direction = displacement / distance if distance != 0 else np.zeros(2)
                 spring_length = self.graph[idx, j]
-                velocity_magnitude = (
-                    (distance - spring_length) / SPRING_CONSTANT
-                ) ** 2
+                velocity_magnitude = ((distance - spring_length) / SPRING_CONSTANT) ** 2
                 if distance < spring_length:
                     velocity_magnitude = -velocity_magnitude
                 velocity_2d = velocity_magnitude * direction
@@ -178,7 +182,7 @@ class SwarmControlNode(Node):
                 velocity[1] += velocity_2d[1]
 
             if len(self.id_list) > 1:
-                velocity /= (len(self.id_list) - 1)
+                velocity /= len(self.id_list) - 1
 
             leader_pos = self.positions["px4_" + str(LEADER_ID)]
             altitude_diff = leader_pos[2] - my_pos[2]
@@ -188,14 +192,19 @@ class SwarmControlNode(Node):
                 velocity[2] = -velocity[2]
 
             horizontal_speed = np.linalg.norm(velocity[:2])
-            velocity[:2] = (velocity[:2] / horizontal_speed) * min(horizontal_speed, VELOCITY_LIMIT)
+            velocity[:2] = (velocity[:2] / horizontal_speed) * min(
+                horizontal_speed, VELOCITY_LIMIT
+            )
             velocity[:2] += self.leader_horizontal_velocities
-            self.get_logger().info(f"[{self.id}] Velocity command: {velocity}, Position: {my_pos}, Leader: {leader_pos}, Velocity: {self.leader_horizontal_velocities}", throttle_duration_sec=1)
+            self.get_logger().info(
+                f"[{self.id}] Velocity command: {velocity}, Position: {my_pos}, Leader: {leader_pos}, Velocity: {self.leader_horizontal_velocities}",
+                throttle_duration_sec=1,
+            )
             self.offboard.fly_vel(velocity[0], velocity[1], velocity[2])
 
             x, y, z = self.offboard.enu.position()
-            if z <= self.target_landing_height:
-                self.offboard.fly_point(x, y, self.target_landing_height)
+            if z <= LANDING_HEIGHT:
+                self.offboard.fly_point(x, y, LANDING_HEIGHT)
                 self.state = "HOVER"
                 return
 
