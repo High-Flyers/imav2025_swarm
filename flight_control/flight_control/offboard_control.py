@@ -86,6 +86,7 @@ class OffboardControl:
     def is_ready(self) -> bool:
         return (
             self._heartbeat_counter >= self.HEARTBEAT_THRESHOLD
+            and self.is_in_offboard
             and self._enu is not None
         )
 
@@ -177,7 +178,7 @@ class OffboardControl:
     def __publish_offboard_control_heartbeat_signal(self) -> None:
         if not self.is_in_offboard:
             return
-        
+
         msg = OffboardControlMode()
         msg.position = True
         msg.velocity = True

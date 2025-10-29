@@ -12,7 +12,7 @@ from flight_control.offboard_control import OffboardControl
 
 
 class SwarmControlNode(Node):
-    STATES = ["INIT", "TAKING_OFF", "IN_AIR", "SWARMING", "HOVER", "LANDING"]
+    STATES = ["INIT", "ARMING", "TAKING_OFF", "IN_AIR", "SWARMING", "HOVER", "LANDING"]
 
     def __init__(self):
         super().__init__("swarm_control")
@@ -29,7 +29,7 @@ class SwarmControlNode(Node):
         self.get_logger().info(f"Drone ID: {self.id}")
         self.state = "IDLE"
         self.last_state = None
-        self.target_takeoff_height = 0.5
+        self.target_takeoff_height = 1.0
         self.target_landing_height = 0.5
         self.position_sub = self.create_subscription(
             PointStamped, "/imav/swarm_positions", self.position_callback, 10
@@ -104,20 +104,28 @@ class SwarmControlNode(Node):
 
         # Wait for offboard ready and our position
         if not self.offboard.is_ready or self.local_id not in self.positions:
+            self.offboard.set_offboard_mode()
             return
 
         # INIT -> TAKING_OFF
         if self.state == "INIT":
-            self.offboard.set_offboard_mode()
             self.offboard.arm()
-            self.state = "TAKING_OFF"
+            if self.offboard.is_armed:
+                self.state = "ARMING"
+            return
+
+        if self.state == "ARMING":
+            if all(
+                state == "ARMING" for state in self.states.values() if state is not None
+            ):
+                self.state = "TAKING_OFF"
             return
 
         # TAKING_OFF: climb to target height
         if self.state == "TAKING_OFF":
             my_pos = self.positions[self.local_id]
             self.offboard.fly_point(my_pos[0], my_pos[1], self.target_takeoff_height)
-            if abs(my_pos[2] - self.target_takeoff_height) < 0.2:
+            if abs(my_pos[2] - self.target_takeoff_height) < 0.1:
                 self.state = "IN_AIR"
             return
 
