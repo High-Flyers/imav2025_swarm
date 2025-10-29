@@ -141,6 +141,23 @@ class OffboardControl:
 
         msg = TrajectorySetpoint()
         msg.position = enu_to_ned(x, y, z)
+        msg.velocity = [float('nan'), float('nan'), float('nan')]
+        msg.yaw = enu_to_ned_heading(
+            heading if heading is not None else self._enu.heading
+        )
+        msg.timestamp = self.__timestamp_now()
+        self._trejctory_setpoint_pub.publish(msg)
+    
+    def fly_vel(self, vx: float, vy: float, vz: float, heading=None) -> None:
+        """
+        Send command to fly with velocity specified by vx, vy, vz (in ENU convention).
+        """
+        if not self.is_in_offboard:
+            return
+
+        msg = TrajectorySetpoint()
+        msg.position = [float('nan'), float('nan'), float('nan')]
+        msg.velocity = enu_to_ned(vx, vy, vz)
         msg.yaw = enu_to_ned_heading(
             heading if heading is not None else self._enu.heading
         )
