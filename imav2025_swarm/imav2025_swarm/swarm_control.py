@@ -12,8 +12,8 @@ from flight_control.offboard_control import OffboardControl
 
 LEADER_ID = 1
 VELOCITY_LIMIT = 2.0
-TAKEOFF_HEIGHT = 0.5
-LANDING_HEIGHT = 0.5
+TAKEOFF_HEIGHT = 1.5
+LANDING_HEIGHT = 1.5
 MIN_VELOCITY = 0.1
 SPRING_CONSTANT = 0.5
 
@@ -184,7 +184,7 @@ class SwarmControlNode(Node):
             if len(self.id_list) > 1:
                 velocity /= len(self.id_list) - 1
 
-            leader_pos = self.positions["px4_" + str(LEADER_ID)]
+            leader_pos = self.positions[self.ns_prefix + "_" + str(LEADER_ID)]
             altitude_diff = leader_pos[2] - my_pos[2]
             velocity[2] = (altitude_diff / SPRING_CONSTANT) ** 2
 
@@ -192,9 +192,12 @@ class SwarmControlNode(Node):
                 velocity[2] = -velocity[2]
 
             horizontal_speed = np.linalg.norm(velocity[:2])
-            velocity[:2] = (velocity[:2] / horizontal_speed) * min(
-                horizontal_speed, VELOCITY_LIMIT
-            )
+            if horizontal_speed == 0:
+                velocity[:2] = np.zeros(2)
+            else:
+                velocity[:2] = (velocity[:2] / horizontal_speed) * min(
+                    horizontal_speed, VELOCITY_LIMIT
+                )
             velocity[:2] += self.leader_horizontal_velocities
             self.get_logger().info(
                 f"[{self.id}] Velocity command: {velocity}, Position: {my_pos}, Leader: {leader_pos}, Velocity: {self.leader_horizontal_velocities}",
