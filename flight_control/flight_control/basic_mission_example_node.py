@@ -21,7 +21,7 @@ class BasicMissionExampleNode(Node):
 
     def __init__(self):
         super().__init__("mission_control_node")
-        self._offboard_control = OffboardControl(self)
+        self._offboard_control = OffboardControl(self, 2)
         self._state = State.IDLE
         self._vehicle_command_send = False
 
