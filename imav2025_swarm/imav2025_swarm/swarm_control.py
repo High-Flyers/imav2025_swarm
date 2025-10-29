@@ -5,6 +5,7 @@ from rclpy.executors import MultiThreadedExecutor
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
+from tf2_ros import Buffer, TransformListener
 import numpy as np
 
 from imav2025_swarm.waypoint_tracker import WaypointTracker
@@ -12,8 +13,8 @@ from flight_control.offboard_control import OffboardControl
 
 LEADER_ID = 1
 VELOCITY_LIMIT = 2.0
-TAKEOFF_HEIGHT = 1.5
-LANDING_HEIGHT = 1.5
+LANDING_HEIGHT = 2.5
+TAKEOFF_HEIGHT = 5.0
 MIN_VELOCITY = 0.1
 SPRING_CONSTANT = 0.5
 
@@ -38,6 +39,8 @@ class SwarmControlNode(Node):
         self.get_logger().info(f"Drone ID: {self.id}")
         self.state = "IDLE"
         self.last_state = None
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
         self.position_sub = self.create_subscription(
             Odometry, "/imav/swarm_positions", self.position_callback, 10
         )
@@ -113,7 +116,7 @@ class SwarmControlNode(Node):
         self.state_pub.publish(String(data=f"{self.local_id}:{self.state}"))
 
         if self.last_state != self.state:
-            self.get_logger().info(f"State changed: {self.last_state} -> {self.state}")
+            self.get_logger().info(f"[{self.id}] State changed: {self.last_state} -> {self.state}")
             self.last_state = self.state
 
         # Wait for offboard ready and our position
@@ -136,14 +139,25 @@ class SwarmControlNode(Node):
             if all(
                 state == "ARMING" for state in self.states.values() if state is not None
             ):
-                self.state = "TAKING_OFF"
+                self.state = "TAKE_OFF"
             return
+        
+        trans = self.tf_buffer.lookup_transform(
+            f"{self.local_id}_ref",
+            f"{self.local_id}",
+            rclpy.time.Time()
+        )
 
         # TAKING_OFF: climb to target height
-        if self.state == "TAKING_OFF":
-            my_pos = self.positions[self.local_id]
-            self.offboard.fly_point(my_pos[0], my_pos[1], TAKEOFF_HEIGHT)
-            if abs(my_pos[2] - TAKEOFF_HEIGHT) < 0.1:
+        if self.state == "TAKE_OFF":
+            x = trans.transform.translation.x
+            y = trans.transform.translation.y
+            self.offboard.fly_point(x, y, TAKEOFF_HEIGHT)
+            self.get_logger().info(f"Taking off to x: {x}, y: {y}, z: {TAKEOFF_HEIGHT}, currently z: {trans.transform.translation.z}")
+            # self.state = "TAKING_OFF"
+        
+        # if self.state == "TAKING_OFF":
+            if abs(trans.transform.translation.z - TAKEOFF_HEIGHT) < 0.2:
                 self.state = "IN_AIR"
             return
 
@@ -184,7 +198,7 @@ class SwarmControlNode(Node):
             if len(self.id_list) > 1:
                 velocity /= len(self.id_list) - 1
 
-            leader_pos = self.positions[self.ns_prefix + "_" + str(LEADER_ID)]
+            leader_pos = self.positions[self.ns_prefix.strip("/") + "_" + str(LEADER_ID)]
             altitude_diff = leader_pos[2] - my_pos[2]
             velocity[2] = (altitude_diff / SPRING_CONSTANT) ** 2
 
@@ -198,6 +212,7 @@ class SwarmControlNode(Node):
                 velocity[:2] = (velocity[:2] / horizontal_speed) * min(
                     horizontal_speed, VELOCITY_LIMIT
                 )
+            self.get_logger().info(f"[{self.id}] spring velocity before leader adjust: {velocity}", throttle_duration_sec=1)
             velocity[:2] += self.leader_horizontal_velocities
             self.get_logger().info(
                 f"[{self.id}] Velocity command: {velocity}, Position: {my_pos}, Leader: {leader_pos}, Velocity: {self.leader_horizontal_velocities}",
@@ -205,11 +220,11 @@ class SwarmControlNode(Node):
             )
             self.offboard.fly_vel(velocity[0], velocity[1], velocity[2])
 
-            x, y, z = self.offboard.enu.position()
-            if z <= LANDING_HEIGHT:
-                self.offboard.fly_point(x, y, LANDING_HEIGHT)
-                self.state = "HOVER"
-                return
+            # x, y, z = self.offboard.enu.position()
+            # if z <= LANDING_HEIGHT:
+            #     self.offboard.fly_point(x, y, LANDING_HEIGHT)
+            #     self.state = "HOVER"
+            #     return
 
         # HOVER: wait for all drones to HOVER
         if self.state == "HOVER":
