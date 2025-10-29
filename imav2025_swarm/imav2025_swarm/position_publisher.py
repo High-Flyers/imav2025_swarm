@@ -1,8 +1,9 @@
 import rclpy
 from rclpy.node import Node
+import rclpy.time
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 from tf2_ros.transform_broadcaster import TransformBroadcaster
-from geometry_msgs.msg import PointStamped, TransformStamped
+from geometry_msgs.msg import TransformStamped
 from px4_msgs.msg import VehicleLocalPosition
 from rclpy.qos import (
     QoSProfile,
@@ -12,6 +13,7 @@ from rclpy.qos import (
 )
 from flight_control.utils.frame_transforms import ned_to_enu, lla_to_enu
 from nav_msgs.msg import Odometry
+from tf2_ros import Buffer, TransformListener
 
 
 class PositionPublisher(Node):
@@ -48,6 +50,8 @@ class PositionPublisher(Node):
 
         self.reference_frame_static_broadcaster = StaticTransformBroadcaster(self)
         self.current_position_broadcaster = TransformBroadcaster(self)
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
     def local_position_cb(self, msg: VehicleLocalPosition):
         if self.reference_local_position is None:
@@ -60,19 +64,27 @@ class PositionPublisher(Node):
         else:
             self.make_current_transform(msg)
 
-        odom_msg = Odometry()
-        odom_msg.header.stamp = self.get_clock().now().to_msg()
-        odom_msg.header.frame_id = f"{self.drone_id}"
-        enu = ned_to_enu(msg.x, msg.y, msg.z)
-        vel_enu = ned_to_enu(msg.vx, msg.vy, msg.vz)
-        odom_msg.pose.pose.position.x = enu[0]
-        odom_msg.pose.pose.position.y = enu[1]
-        odom_msg.pose.pose.position.z = enu[2]
-        odom_msg.twist.twist.linear.x = vel_enu[0]
-        odom_msg.twist.twist.linear.y = vel_enu[1]
-        odom_msg.twist.twist.linear.z = vel_enu[2]
-        self.publisher_.publish(odom_msg)
-        self.get_logger().debug(f'Published position for {odom_msg.header.frame_id}')
+        try:
+            trans = self.tf_buffer.lookup_transform(
+                f"{self.ns_prefix.strip('/')}_1_ref",
+                f"{self.drone_id}",
+                rclpy.time.Time()
+            )
+            odom_msg = Odometry()
+            odom_msg.header.stamp = self.get_clock().now().to_msg()
+            odom_msg.header.frame_id = f"{self.drone_id}"
+            odom_msg.pose.pose.position.x = trans.transform.translation.x
+            odom_msg.pose.pose.position.y = trans.transform.translation.y
+            odom_msg.pose.pose.position.z = trans.transform.translation.z
+
+            vel_enu = ned_to_enu(msg.vx, msg.vy, msg.vz)
+            odom_msg.twist.twist.linear.x = vel_enu[0]
+            odom_msg.twist.twist.linear.y = vel_enu[1]
+            odom_msg.twist.twist.linear.z = vel_enu[2]
+            self.publisher_.publish(odom_msg)
+            self.get_logger().debug(f'Published odometry from tf lookup for {odom_msg.header.frame_id}')
+        except Exception as e:
+            self.get_logger().warn(f"TF lookup failed: {e}")
 
     def reference_position_cb(self, msg: VehicleLocalPosition) -> None:
         self.reference_local_position = msg
