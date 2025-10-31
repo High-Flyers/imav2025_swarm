@@ -8,19 +8,28 @@ from std_srvs.srv import Trigger
 from tf2_ros import Buffer, TransformListener
 import numpy as np
 
-from imav2025_swarm.waypoint_tracker import WaypointTracker
+from imav2025_swarm.waypoint_tracker import WaypointTracker, WTState
 from flight_control.offboard_control import OffboardControl
 
 LEADER_ID = 1
 VELOCITY_LIMIT = 2.0
-LANDING_HEIGHT = 2.5
-TAKEOFF_HEIGHT = 5.0
+TAKEOFF_HEIGHT = 1.0
 MIN_VELOCITY = 0.1
 SPRING_CONSTANT = 0.5
 
 
 class SwarmControlNode(Node):
-    STATES = ["INIT", "ARMING", "TAKING_OFF", "IN_AIR", "SWARMING", "HOVER", "LANDING"]
+    STATES = [
+        "IDLE",
+        "INIT",
+        "OFFBOARD",
+        "ARMING",
+        "TAKING_OFF",
+        "IN_AIR",
+        "SWARMING",
+        "HOVER",
+        "LANDING",
+    ]
 
     def __init__(self):
         super().__init__("swarm_control")
@@ -116,7 +125,9 @@ class SwarmControlNode(Node):
         self.state_pub.publish(String(data=f"{self.local_id}:{self.state}"))
 
         if self.last_state != self.state:
-            self.get_logger().info(f"[{self.id}] State changed: {self.last_state} -> {self.state}")
+            self.get_logger().info(
+                f"[{self.id}] State changed: {self.last_state} -> {self.state}"
+            )
             self.last_state = self.state
 
         # Wait for offboard ready and our position
@@ -125,11 +136,17 @@ class SwarmControlNode(Node):
             or self.local_id not in self.positions
             or (self.is_leader and self.leader_horizontal_velocities is None)
         ):
-            self.offboard.set_offboard_mode()
             return
 
-        # INIT -> TAKING_OFF
+        # INIT -> OFFBOARD
         if self.state == "INIT":
+            self.offboard.set_offboard_mode()
+            if self.offboard.is_in_offboard:
+                self.state = "OFFBOARD"
+            return
+
+        # OFFBOARD -> TAKING_OFF
+        if self.state == "OFFBOARD":
             self.offboard.arm()
             if self.offboard.is_armed:
                 self.state = "ARMING"
@@ -141,11 +158,9 @@ class SwarmControlNode(Node):
             ):
                 self.state = "TAKE_OFF"
             return
-        
+
         trans = self.tf_buffer.lookup_transform(
-            f"{self.local_id}_ref",
-            f"{self.local_id}",
-            rclpy.time.Time()
+            f"{self.local_id}_ref", f"{self.local_id}", rclpy.time.Time()
         )
 
         # TAKING_OFF: climb to target height
@@ -153,10 +168,7 @@ class SwarmControlNode(Node):
             x = trans.transform.translation.x
             y = trans.transform.translation.y
             self.offboard.fly_point(x, y, TAKEOFF_HEIGHT)
-            self.get_logger().info(f"Taking off to x: {x}, y: {y}, z: {TAKEOFF_HEIGHT}, currently z: {trans.transform.translation.z}")
-            # self.state = "TAKING_OFF"
-        
-        # if self.state == "TAKING_OFF":
+
             if abs(trans.transform.translation.z - TAKEOFF_HEIGHT) < 0.2:
                 self.state = "IN_AIR"
             return
@@ -171,15 +183,21 @@ class SwarmControlNode(Node):
 
         # SWARMING: run spring control
         if self.state == "SWARMING":
-            if self.is_leader:
-                return  # Leader hovers in place
-
             if self.graph is None or len(self.positions) != self.graph.shape[0]:
                 self.graph, self.id_list = self.compute_graph()
 
             idx = self.id_list.index(self.local_id)
             my_pos = self.positions[self.local_id]
             velocity = np.zeros(3)
+
+            if (self.is_leader and self.waypoint_tracker.state == WTState.END) or any(
+                state == "HOVER" for state in self.states.values()
+            ):
+                self.state = "HOVER"
+                return
+
+            if self.is_leader:
+                return  # Leader hovers in place
 
             for j, other_id in enumerate(self.id_list):
                 if other_id == self.local_id:
@@ -198,7 +216,9 @@ class SwarmControlNode(Node):
             if len(self.id_list) > 1:
                 velocity /= len(self.id_list) - 1
 
-            leader_pos = self.positions[self.ns_prefix.strip("/") + "_" + str(LEADER_ID)]
+            leader_pos = self.positions[
+                self.ns_prefix.strip("/") + "_" + str(LEADER_ID)
+            ]
             altitude_diff = leader_pos[2] - my_pos[2]
             velocity[2] = (altitude_diff / SPRING_CONSTANT) ** 2
 
@@ -212,19 +232,16 @@ class SwarmControlNode(Node):
                 velocity[:2] = (velocity[:2] / horizontal_speed) * min(
                     horizontal_speed, VELOCITY_LIMIT
                 )
-            self.get_logger().info(f"[{self.id}] spring velocity before leader adjust: {velocity}", throttle_duration_sec=1)
+            # self.get_logger().info(
+            #     f"[{self.id}] spring velocity before leader adjust: {velocity}",
+            #     throttle_duration_sec=1,
+            # )
             velocity[:2] += self.leader_horizontal_velocities
-            self.get_logger().info(
-                f"[{self.id}] Velocity command: {velocity}, Position: {my_pos}, Leader: {leader_pos}, Velocity: {self.leader_horizontal_velocities}",
-                throttle_duration_sec=1,
-            )
+            # self.get_logger().info(
+            #     f"[{self.id}] Velocity command: {velocity}, Position: {my_pos}, Leader: {leader_pos}, Velocity: {self.leader_horizontal_velocities}",
+            #     throttle_duration_sec=1,
+            # )
             self.offboard.fly_vel(velocity[0], velocity[1], velocity[2])
-
-            # x, y, z = self.offboard.enu.position()
-            # if z <= LANDING_HEIGHT:
-            #     self.offboard.fly_point(x, y, LANDING_HEIGHT)
-            #     self.state = "HOVER"
-            #     return
 
         # HOVER: wait for all drones to HOVER
         if self.state == "HOVER":
@@ -236,7 +253,7 @@ class SwarmControlNode(Node):
 
         # LANDING: land
         if self.state == "LANDING":
-            self.offboard.land()
+            self.offboard.set_land_mode()
             return
 
 
