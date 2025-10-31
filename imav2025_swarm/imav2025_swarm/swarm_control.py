@@ -153,9 +153,9 @@ class SwarmControlNode(Node):
             x = trans.transform.translation.x
             y = trans.transform.translation.y
             self.offboard.fly_point(x, y, TAKEOFF_HEIGHT)
-            # self.get_logger().info(
-            #     f"Taking off to x: {x}, y: {y}, z: {TAKEOFF_HEIGHT}, currently z: {trans.transform.translation.z}"
-            # )
+            self.get_logger().info(
+                f"Taking off to x: {x}, y: {y}, z: {TAKEOFF_HEIGHT}, currently z: {trans.transform.translation.z}"
+            )
             # self.state = "TAKING_OFF"
 
             # if self.state == "TAKING_OFF":
@@ -220,12 +220,12 @@ class SwarmControlNode(Node):
                 velocity[:2] = (velocity[:2] / horizontal_speed) * min(
                     horizontal_speed, VELOCITY_LIMIT
                 )
-            # self.get_logger().info(f"[{self.id}] spring velocity before leader adjust: {velocity}", throttle_duration_sec=1)
+            self.get_logger().info(f"[{self.id}] spring velocity before leader adjust: {velocity}", throttle_duration_sec=1)
             velocity[:2] += self.leader_horizontal_velocities
-            # self.get_logger().info(
-            #     f"[{self.id}] Velocity command: {velocity}, Position: {my_pos}, Leader: {leader_pos}, Velocity: {self.leader_horizontal_velocities}",
-            #     throttle_duration_sec=1,
-            # )
+            self.get_logger().info(
+                f"[{self.id}] Velocity command: {velocity}, Position: {my_pos}, Leader: {leader_pos}, Velocity: {self.leader_horizontal_velocities}",
+                throttle_duration_sec=1,
+            )
             self.offboard.fly_vel(velocity[0], velocity[1], velocity[2])
 
         # HOVER: wait for all drones to HOVER
