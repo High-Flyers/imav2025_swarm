@@ -171,6 +171,8 @@ class SwarmControlNode(Node):
                 y = trans.transform.translation.y
                 z = trans.transform.translation.z
                 self.takeoff_position = (x, y, z)
+                if self.is_leader:
+                    self.waypoint_tracker.set_takeoff_height(z)
             self.offboard.fly_point(
                 self.takeoff_position[0],
                 self.takeoff_position[1],
