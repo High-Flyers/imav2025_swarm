@@ -71,6 +71,7 @@ class SwarmControlNode(Node):
         self.timer = self.create_timer(0.1, self.control_loop)
         self.graph = None
         self.leader_horizontal_velocities = None
+        self.takeoff_position = None
 
     def mission_start_callback(self, _, response):
         self.state = "INIT"
@@ -165,11 +166,24 @@ class SwarmControlNode(Node):
 
         # TAKING_OFF: climb to target height
         if self.state == "TAKE_OFF":
-            x = trans.transform.translation.x
-            y = trans.transform.translation.y
-            self.offboard.fly_point(x, y, TAKEOFF_HEIGHT)
+            if self.takeoff_position is None:
+                x = trans.transform.translation.x
+                y = trans.transform.translation.y
+                z = trans.transform.translation.z
+                self.takeoff_position = (x, y, z)
+            self.offboard.fly_point(
+                self.takeoff_position[0],
+                self.takeoff_position[1],
+                self.takeoff_position[2] + TAKEOFF_HEIGHT,
+            )
 
-            if abs(trans.transform.translation.z - TAKEOFF_HEIGHT) < 0.2:
+            if (
+                abs(
+                    trans.transform.translation.z
+                    - (self.takeoff_position[2] + TAKEOFF_HEIGHT)
+                )
+                < 0.2
+            ):
                 self.state = "IN_AIR"
             return
 
