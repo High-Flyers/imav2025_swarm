@@ -122,7 +122,7 @@ class OffboardControl:
 
     def set_land_mode(self) -> None:
         self.__publish_vehicle_command(
-            VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=4.0, param3=3.0
+            VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=4.0, param3=6.0
         )
 
     def is_point_reached(self, x: float, y: float, z: float, epsilon=0.1) -> bool:
