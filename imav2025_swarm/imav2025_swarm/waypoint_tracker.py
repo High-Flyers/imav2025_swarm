@@ -22,10 +22,10 @@ class WaypointTracker:
         self._target_position = None
         self._initial_position = None
         self._flight_altitude = 5.0
-        self._land_altitude = 0.4
+        self._land_altitude = 2.0
         self._altitude_reached = False
         self._swarm_states = {}
-        self._state = WTState.IDLE
+        self.state = WTState.IDLE
 
         self._node.declare_parameter("latitude", value=0.0)
         self._node.declare_parameter("longitude", value=0.0)
@@ -56,11 +56,11 @@ class WaypointTracker:
         if not self.is_swarming or self._target_position is None:
             return
 
-        if self._state == WTState.IDLE:
-            self._state = WTState.ALTITUDE
+        if self.state == WTState.IDLE:
+            self.state = WTState.ALTITUDE
             return
 
-        if self._state == WTState.ALTITUDE:
+        if self.state == WTState.ALTITUDE:
             self._offboard.fly_point(
                 self._initial_position.x,
                 self._initial_position.y,
@@ -68,11 +68,11 @@ class WaypointTracker:
             )
 
             if abs(self._offboard.enu.z - self._flight_altitude) < 0.1:
-                self._state = WTState.WAYPOINT
+                self.state = WTState.WAYPOINT
 
             return
 
-        if self._state == WTState.WAYPOINT:
+        if self.state == WTState.WAYPOINT:
             self._offboard.fly_point(
                 self._target_position[0],
                 self._target_position[1],
@@ -84,11 +84,11 @@ class WaypointTracker:
                 self._target_position[1],
                 self._flight_altitude,
             ):
-                self._state = WTState.LAND
+                self.state = WTState.LAND
 
             return
 
-        if self._state == WTState.LAND:
+        if self.state == WTState.LAND:
             self._offboard.fly_point(
                 self._target_position[0], self._target_position[1], self._land_altitude
             )
@@ -97,7 +97,7 @@ class WaypointTracker:
                 self._target_position[1],
                 self._land_altitude,
             ):
-                self._state = WTState.END
+                self.state = WTState.END
             return
 
     def __initialize_target_position(self):

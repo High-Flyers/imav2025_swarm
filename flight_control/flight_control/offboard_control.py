@@ -80,13 +80,12 @@ class OffboardControl:
 
     @property
     def attitude(self) -> VehicleAttitude:
-        return self._vehicle_attu
+        return self._vehicle_attitude
 
     @property
     def is_ready(self) -> bool:
         return (
             self._heartbeat_counter >= self.HEARTBEAT_THRESHOLD
-            and self.is_in_offboard
             and self._enu is not None
         )
 
@@ -108,9 +107,6 @@ class OffboardControl:
             VehicleCommand.VEHICLE_CMD_COMPONENT_ARM_DISARM, param1=0.0
         )
 
-    def land(self) -> None:
-        self.__publish_vehicle_command(VehicleCommand.VEHICLE_CMD_NAV_LAND)
-
     def return_to_launch(self) -> None:
         self.__publish_vehicle_command(VehicleCommand.VEHICLE_CMD_NAV_RETURN_TO_LAUNCH)
 
@@ -122,6 +118,11 @@ class OffboardControl:
     def set_hold_mode(self) -> None:
         self.__publish_vehicle_command(
             VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=2.0
+        )
+
+    def set_land_mode(self) -> None:
+        self.__publish_vehicle_command(
+            VehicleCommand.VEHICLE_CMD_DO_SET_MODE, param1=1.0, param2=4.0, param3=3.0
         )
 
     def is_point_reached(self, x: float, y: float, z: float, epsilon=0.1) -> bool:
@@ -141,13 +142,13 @@ class OffboardControl:
 
         msg = TrajectorySetpoint()
         msg.position = enu_to_ned(x, y, z)
-        msg.velocity = [float('nan'), float('nan'), float('nan')]
+        msg.velocity = [float("nan"), float("nan"), float("nan")]
         msg.yaw = enu_to_ned_heading(
             heading if heading is not None else self._enu.heading
         )
         msg.timestamp = self.__timestamp_now()
         self._trejctory_setpoint_pub.publish(msg)
-    
+
     def fly_vel(self, vx: float, vy: float, vz: float, heading=None) -> None:
         """
         Send command to fly with velocity specified by vx, vy, vz (in ENU convention).
@@ -156,7 +157,7 @@ class OffboardControl:
             return
 
         msg = TrajectorySetpoint()
-        msg.position = [float('nan'), float('nan'), float('nan')]
+        msg.position = [float("nan"), float("nan"), float("nan")]
         msg.velocity = enu_to_ned(vx, vy, vz)
         msg.yaw = enu_to_ned_heading(
             heading if heading is not None else self._enu.heading
