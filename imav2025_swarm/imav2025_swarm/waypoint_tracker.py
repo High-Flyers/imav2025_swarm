@@ -26,6 +26,7 @@ class WaypointTracker:
         self._altitude_reached = False
         self._swarm_states = {}
         self.state = WTState.IDLE
+        self.last_state = WTState.IDLE
         self.takeoff_height = None
 
         self._node.declare_parameter("latitude", value=0.0)
@@ -57,11 +58,19 @@ class WaypointTracker:
             self.__initialize_target_position()
             self._initial_position = self._offboard.enu
 
-        if not self.is_swarming or self._target_position is None:
-            return
+        if self.last_state != self.state:
+            self._node.get_logger().info(
+                f"[waypoint tracker] State changed: {self.last_state.name} -> {self.state.name}"
+            )
+            self.last_state = self.state
 
         if self.state == WTState.IDLE:
-            self.state = WTState.ALTITUDE
+            if (
+                self.is_swarming
+                and self._target_position is not None
+                and self.takeoff_height is not None
+            ):
+                self.state = WTState.ALTITUDE
             return
 
         if self.state == WTState.ALTITUDE:
