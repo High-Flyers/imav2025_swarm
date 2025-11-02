@@ -206,7 +206,7 @@ class SwarmControlNode(Node):
             my_pos = self.positions[self.local_id]
             velocity = np.zeros(3)
 
-            if (self.is_leader and self.waypoint_tracker.state == WTState.END) or any(
+            if (self.is_leader and self.waypoint_tracker.state == WTState.LAND) or any(
                 state == "HOVER" for state in self.states.values()
             ):
                 self.state = "HOVER"
