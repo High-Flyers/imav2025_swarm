@@ -12,7 +12,7 @@ class WTState(Enum):
     ALTITUDE = auto()  # reaching the flight altitude
     WAYPOINT = auto()  # reaching the target waypoint
     LAND = auto()  # landing
-    END = auto() # no more waypoint tracking
+    END = auto()  # no more waypoint tracking
 
 
 class WaypointTracker:
@@ -26,6 +26,8 @@ class WaypointTracker:
         self._altitude_reached = False
         self._swarm_states = {}
         self.state = WTState.IDLE
+        self.last_state = WTState.IDLE
+        self.takeoff_height = None
 
         self._node.declare_parameter("latitude", value=0.0)
         self._node.declare_parameter("longitude", value=0.0)
@@ -40,6 +42,9 @@ class WaypointTracker:
     def is_swarming(self):
         return all(state == "SWARMING" for state in self._swarm_states.values())
 
+    def set_takeoff_height(self, takeoff_height) -> None:
+        self.takeoff_height = takeoff_height
+
     def __state_callback(self, msg: String) -> None:
         # msg.data format: "drone_id:STATE"
         try:
@@ -53,21 +58,30 @@ class WaypointTracker:
             self.__initialize_target_position()
             self._initial_position = self._offboard.enu
 
-        if not self.is_swarming or self._target_position is None:
-            return
+        if self.last_state != self.state:
+            self._node.get_logger().info(
+                f"[waypoint tracker] State changed: {self.last_state.name} -> {self.state.name}"
+            )
+            self.last_state = self.state
 
         if self.state == WTState.IDLE:
-            self.state = WTState.ALTITUDE
+            if (
+                self.is_swarming
+                and self._target_position is not None
+                and self.takeoff_height is not None
+            ):
+                self.state = WTState.ALTITUDE
             return
 
         if self.state == WTState.ALTITUDE:
-            self._offboard.fly_point(
-                self._initial_position.x,
-                self._initial_position.y,
-                self._flight_altitude,
-            )
+            self._offboard.fly_vel(0, 0, 0.5)
 
-            if abs(self._offboard.enu.z - self._flight_altitude) < 0.1:
+            if (
+                abs(
+                    self._offboard.enu.z - (self.takeoff_height + self._flight_altitude)
+                )
+                < 0.1
+            ):
                 self.state = WTState.WAYPOINT
 
             return
@@ -76,26 +90,24 @@ class WaypointTracker:
             self._offboard.fly_point(
                 self._target_position[0],
                 self._target_position[1],
-                self._flight_altitude,
+                self.takeoff_height + self._flight_altitude,
             )
 
             if self._offboard.is_point_reached(
                 self._target_position[0],
                 self._target_position[1],
-                self._flight_altitude,
+                self.takeoff_height + self._flight_altitude,
             ):
                 self.state = WTState.LAND
 
             return
 
         if self.state == WTState.LAND:
-            self._offboard.fly_point(
-                self._target_position[0], self._target_position[1], self._land_altitude
-            )
+            self._offboard.fly_vel(0, 0, -0.5)
             if self._offboard.is_point_reached(
                 self._target_position[0],
                 self._target_position[1],
-                self._land_altitude,
+                self.takeoff_height + self._land_altitude,
             ):
                 self.state = WTState.END
             return
