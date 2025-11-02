@@ -21,8 +21,6 @@ class WaypointTracker:
         self._offboard = offboard_control
         self._target_position = None
         self._initial_position = None
-        self._flight_altitude = 5.0
-        self._land_altitude = 2.0
         self._altitude_reached = False
         self._swarm_states = {}
         self.state = WTState.IDLE
@@ -31,6 +29,17 @@ class WaypointTracker:
 
         self._node.declare_parameter("latitude", value=0.0)
         self._node.declare_parameter("longitude", value=0.0)
+        self._node.declare_parameter("flight_altitude", value=5.0)
+        self._node.declare_parameter("land_altitude", value=2.0)
+
+        self._flight_altitude = (
+            self._node.get_parameter("flight_altitude")
+            .get_parameter_value()
+            .double_value
+        )
+        self._land_altitude = (
+            self._node.get_parameter("land_altitude").get_parameter_value().double_value
+        )
 
         self._swarm_state_sub = self._node.create_subscription(
             String, "/imav/swarm_states", self.__state_callback, 10

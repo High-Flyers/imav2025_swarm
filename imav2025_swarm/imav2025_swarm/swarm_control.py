@@ -11,12 +11,6 @@ import numpy as np
 from imav2025_swarm.waypoint_tracker import WaypointTracker, WTState
 from flight_control.offboard_control import OffboardControl
 
-LEADER_ID = 1
-VELOCITY_LIMIT = 2.0
-TAKEOFF_HEIGHT = 1.0
-MIN_VELOCITY = 0.1
-SPRING_CONSTANT = 0.5
-
 
 class SwarmControlNode(Node):
     STATES = [
@@ -31,20 +25,57 @@ class SwarmControlNode(Node):
         "LANDING",
     ]
 
+    LEADER_ID = 1
+    VELOCITY_LIMIT = 2.0
+    TAKEOFF_HEIGHT = 1.0
+    MIN_VELOCITY = 0.1
+    SPRING_CONSTANT = 0.5
+
     def __init__(self):
         super().__init__("swarm_control")
 
         self.declare_parameter("ns_prefix", value="uav")
+        self.declare_parameter("leader_id", value=1)
+        self.declare_parameter("velocity_limit", value=2.0)
+        self.declare_parameter("takeoff_height", value=1.0)
+        self.declare_parameter("min_velocity", value=0.1)
+        self.declare_parameter("spring_constant", value=0.5)
+        self.declare_parameter("landing_state", value="END")
+
         self.ns_prefix = (
             self.get_parameter("ns_prefix").get_parameter_value().string_value
         )
+        self.LEADER_ID = (
+            self.get_parameter("leader_id").get_parameter_value().integer_value
+        )
+        self.VELOCITY_LIMIT = (
+            self.get_parameter("velocity_limit").get_parameter_value().double_value
+        )
+        self.TAKEOFF_HEIGHT = (
+            self.get_parameter("takeoff_height").get_parameter_value().double_value
+        )
+        self.MIN_VELOCITY = (
+            self.get_parameter("min_velocity").get_parameter_value().double_value
+        )
+        self.SPRING_CONSTANT = (
+            self.get_parameter("spring_constant").get_parameter_value().double_value
+        )
+        
+        self.landing_state = WTState.END
+        match self.get_parameter("landing_state").get_parameter_value().string_value:
+            case "END":
+                self.landing_state = WTState.END
+            case "LAND":
+                self.landing_state = WTState.LAND
+            case _:
+                raise RuntimeError("landing state not recognized")
 
         self.positions = {}  # drone_id: np.array([x, y, z])
         self.states = {}  # drone_id: state string
         self.local_id = self.get_namespace().strip("/")
         self.id = int(self.local_id.replace(f"{self.ns_prefix}_", ""))
-        self.leader_drone_id = f"{self.ns_prefix}_{LEADER_ID}"
-        self.is_leader = self.id == LEADER_ID
+        self.leader_drone_id = f"{self.ns_prefix}_{self.LEADER_ID}"
+        self.is_leader = self.id == self.LEADER_ID
         self.get_logger().info(f"Drone ID: {self.id}")
         self.state = "IDLE"
         self.last_state = None
@@ -97,8 +128,8 @@ class SwarmControlNode(Node):
         self.positions[drone_id] = np.array([position.x, position.y, position.z])
 
         if drone_id == self.leader_drone_id:
-            vx = velocity.x if abs(velocity.x) > MIN_VELOCITY else 0.0
-            vy = velocity.y if abs(velocity.y) > MIN_VELOCITY else 0.0
+            vx = velocity.x if abs(velocity.x) > self.MIN_VELOCITY else 0.0
+            vy = velocity.y if abs(velocity.y) > self.MIN_VELOCITY else 0.0
             self.leader_horizontal_velocities = np.array([vx, vy])
 
     def state_callback(self, msg: String):
@@ -176,13 +207,13 @@ class SwarmControlNode(Node):
             self.offboard.fly_point(
                 self.takeoff_position[0],
                 self.takeoff_position[1],
-                self.takeoff_position[2] + TAKEOFF_HEIGHT,
+                self.takeoff_position[2] + self.TAKEOFF_HEIGHT,
             )
 
             if (
                 abs(
                     trans.transform.translation.z
-                    - (self.takeoff_position[2] + TAKEOFF_HEIGHT)
+                    - (self.takeoff_position[2] + self.TAKEOFF_HEIGHT)
                 )
                 < 0.2
             ):
@@ -206,7 +237,7 @@ class SwarmControlNode(Node):
             my_pos = self.positions[self.local_id]
             velocity = np.zeros(3)
 
-            if (self.is_leader and self.waypoint_tracker.state == WTState.LAND) or any(
+            if (self.is_leader and self.waypoint_tracker.state == WTState.END) or any(
                 state == "HOVER" for state in self.states.values()
             ):
                 self.state = "HOVER"
@@ -222,7 +253,9 @@ class SwarmControlNode(Node):
                 distance = np.linalg.norm(displacement)
                 direction = displacement / distance if distance != 0 else np.zeros(2)
                 spring_length = self.graph[idx, j]
-                velocity_magnitude = ((distance - spring_length) / SPRING_CONSTANT) ** 2
+                velocity_magnitude = (
+                    (distance - spring_length) / self.SPRING_CONSTANT
+                ) ** 2
                 if distance < spring_length:
                     velocity_magnitude = -velocity_magnitude
                 velocity_2d = velocity_magnitude * direction
@@ -233,10 +266,10 @@ class SwarmControlNode(Node):
                 velocity /= len(self.id_list) - 1
 
             leader_pos = self.positions[
-                self.ns_prefix.strip("/") + "_" + str(LEADER_ID)
+                self.ns_prefix.strip("/") + "_" + str(self.LEADER_ID)
             ]
             altitude_diff = leader_pos[2] - my_pos[2]
-            velocity[2] = (altitude_diff / SPRING_CONSTANT) ** 2
+            velocity[2] = (altitude_diff / self.SPRING_CONSTANT) ** 2
 
             if altitude_diff < 0:
                 velocity[2] = -velocity[2]
@@ -246,7 +279,7 @@ class SwarmControlNode(Node):
                 velocity[:2] = np.zeros(2)
             else:
                 velocity[:2] = (velocity[:2] / horizontal_speed) * min(
-                    horizontal_speed, VELOCITY_LIMIT
+                    horizontal_speed, self.VELOCITY_LIMIT
                 )
             # self.get_logger().info(
             #     f"[{self.id}] spring velocity before leader adjust: {velocity}",
