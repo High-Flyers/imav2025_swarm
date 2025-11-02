@@ -76,7 +76,6 @@ class WaypointTracker:
         if self.state == WTState.ALTITUDE:
             self._offboard.fly_vel(0, 0, 0.5)
 
-
             if (
                 abs(
                     self._offboard.enu.z - (self.takeoff_height + self._flight_altitude)
@@ -104,11 +103,7 @@ class WaypointTracker:
             return
 
         if self.state == WTState.LAND:
-            self._offboard.fly_point(
-                self._target_position[0],
-                self._target_position[1],
-                self.takeoff_height + self._land_altitude,
-            )
+            self._offboard.fly_vel(0, 0, -0.5)
             if self._offboard.is_point_reached(
                 self._target_position[0],
                 self._target_position[1],
