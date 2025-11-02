@@ -1,4 +1,18 @@
 /*/swarm_control:
   ros__parameters:
+    leader_id: 1
+    velocity_limit: 2.0
+    takeoff_height: 1.0
+    min_velocity: 0.1
+    spring_constant: 0.5
+    landing_state: "END"
+
+    # waypoint tracker
+
+    flight_altitude: 5.0
+    land_altitude: 2.0
+
+    # target coordinates
+
     latitude:  50.2687
     longitude: 18.6716
