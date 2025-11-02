@@ -72,11 +72,11 @@ def enu_to_ned(e, n, u):
 
 
 def ned_to_enu_heading(heading):
-    return heading + (np.pi / 2)
+    return -heading + (np.pi / 2.0)
 
 
 def enu_to_ned_heading(heading):
-    return heading - (np.pi / 2)
+    return -heading + (np.pi / 2.0)
 
 
 def frd_to_flu_quaternion(x, y, z, w):
@@ -127,7 +127,7 @@ class ENULocalOdometry:
         x, y, z = ned_to_enu(local_position.x, local_position.y, local_position.z)
         vx, vy, vz = ned_to_enu(local_position.vx, local_position.vy, local_position.vz)
         qx, qy, qz, qw = frd_to_flu_quaternion(*attitude.q[1:], w=attitude.q[0])
-        heading = -local_position.heading + (np.pi / 2.0)
+        heading = ned_to_enu_heading(local_position.heading)
         return ENULocalOdometry(
             x,
             y,
