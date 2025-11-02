@@ -1,8 +1,8 @@
 /*/swarm_control:
   ros__parameters:
     leader_id: 1
-    velocity_limit: 2.0
-    takeoff_height: 1.0
+    velocity_limit: 1.0
+    takeoff_height: 0.3
     min_velocity: 0.1
     spring_constant: 0.5
     landing_state: "END"
@@ -10,7 +10,7 @@
     # waypoint tracker
 
     flight_altitude: 5.0
-    land_altitude: 2.0
+    land_altitude: 0.5
 
     # target coordinates
 
