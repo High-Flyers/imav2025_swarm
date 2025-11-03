@@ -18,7 +18,7 @@ RUN sudo apt-get update && sudo apt-get -y --quiet --no-install-recommends insta
     && sudo rm -rf /var/lib/apt/lists/*
 
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
-RUN source "~/.bashrc" && cargo install cargo-ament-build
+RUN source "/home/${USERNAME}/.bashrc" && cargo install cargo-ament-build
 
 RUN sudo pip3 install -U numpy numpy-quaternion
 RUN sudo pip3 install git+https://github.com/colcon/colcon-cargo.git
