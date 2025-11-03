@@ -1,7 +1,7 @@
 from ament_index_python import get_package_share_path
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, OpaqueFunction, ExecuteProcess
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 
 
@@ -19,11 +19,6 @@ def generate_launch_description():
         default_value=(
             imav_package_path / "params" / "imav_real_params.yaml"
         ).as_posix(),
-    )
-
-    microxrce = ExecuteProcess(
-        cmd=["MicroXRCEAgent", "serial", "-D", "/dev/ttyAMA0", "-b", "921600"],
-        name="uxrce",
     )
 
     def actions_with_context(context):
@@ -51,8 +46,6 @@ def generate_launch_description():
     ld.add_action(ns_prefix_arg)
     ld.add_action(drone_id_arg)
     ld.add_action(params_file_arg)
-
-    ld.add_action(microxrce)
     ld.add_action(OpaqueFunction(function=actions_with_context))
 
     return ld
