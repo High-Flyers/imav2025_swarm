@@ -18,6 +18,7 @@ RUN sudo apt-get update && sudo apt-get -y --quiet --no-install-recommends insta
     && sudo rm -rf /var/lib/apt/lists/*
 
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 RUN cargo install cargo-ament-build
 
 RUN sudo pip3 install -U numpy numpy-quaternion
