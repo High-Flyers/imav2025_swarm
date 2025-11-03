@@ -13,14 +13,15 @@ RUN git clone "https://github.com/eProsima/Micro-XRCE-DDS-Agent" --branch v2.4.1
 
 RUN sudo apt-get update && sudo apt-get -y --quiet --no-install-recommends install \
     ros-${ROS_DISTRO}-rviz2 \
+    libclang-dev \
+    python3-vcstool \
     && sudo rm -rf /var/lib/apt/lists/*
 
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 
 RUN sudo pip3 install -U numpy numpy-quaternion
-RUN sudo apt install -y libclang-dev python3-vcstool
-RUN pip3 install git+https://github.com/colcon/colcon-cargo.git
-RUN pip3 install git+https://github.com/colcon/colcon-ros-cargo.git
+RUN sudo pip3 install git+https://github.com/colcon/colcon-cargo.git
+RUN sudo pip3 install git+https://github.com/colcon/colcon-ros-cargo.git
 
 RUN sudo usermod -aG dialout ${USERNAME}
 
