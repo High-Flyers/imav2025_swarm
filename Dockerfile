@@ -18,6 +18,7 @@ RUN sudo apt-get update && sudo apt-get -y --quiet --no-install-recommends insta
     && sudo rm -rf /var/lib/apt/lists/*
 
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
+RUN cargo install cargo-ament-build
 
 RUN sudo pip3 install -U numpy numpy-quaternion
 RUN sudo pip3 install git+https://github.com/colcon/colcon-cargo.git
@@ -26,11 +27,11 @@ RUN sudo pip3 install git+https://github.com/colcon/colcon-ros-cargo.git
 RUN sudo usermod -aG dialout ${USERNAME}
 
 WORKDIR ${ROS_WS}
-RUN source "/opt/ros/${ROS_DISTRO}/setup.bash" && \
-    colcon build
-
 RUN git clone https://github.com/ros2-rust/ros2_rust.git src/ros2_rust
 RUN vcs import src < src/ros2_rust/ros2_rust_humble.repos
+
+RUN source "/opt/ros/${ROS_DISTRO}/setup.bash" && \
+    colcon build
 
 WORKDIR ${ROS_WS}/src
 COPY --chown=${USERNAME} . imav
