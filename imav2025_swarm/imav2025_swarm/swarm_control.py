@@ -5,7 +5,6 @@ from rclpy.executors import MultiThreadedExecutor
 from nav_msgs.msg import Odometry
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
-from tf2_ros import Buffer, TransformListener
 import numpy as np
 
 from imav2025_swarm.waypoint_tracker import WaypointTracker, WTState
@@ -79,8 +78,6 @@ class SwarmControlNode(Node):
         self.get_logger().info(f"Drone ID: {self.id}")
         self.state = "IDLE"
         self.last_state = None
-        self.tf_buffer = Buffer()
-        self.tf_listener = TransformListener(self.tf_buffer, self)
         self.position_sub = self.create_subscription(
             Odometry, "/imav/swarm_positions", self.position_callback, 10
         )
@@ -191,16 +188,12 @@ class SwarmControlNode(Node):
                 self.state = "TAKE_OFF"
             return
 
-        trans = self.tf_buffer.lookup_transform(
-            f"{self.local_id}_ref", f"{self.local_id}", rclpy.time.Time()
-        )
-
         # TAKING_OFF: climb to target height
         if self.state == "TAKE_OFF":
             if self.takeoff_position is None:
-                x = trans.transform.translation.x
-                y = trans.transform.translation.y
-                z = trans.transform.translation.z
+                x = self.offboard.enu.x
+                y = self.offboard.enu.y
+                z = self.offboard.enu.z
                 self.takeoff_position = (x, y, z)
                 if self.is_leader:
                     self.waypoint_tracker.set_takeoff_height(z)
@@ -212,7 +205,7 @@ class SwarmControlNode(Node):
 
             if (
                 abs(
-                    trans.transform.translation.z
+                    self.offboard.enu.z
                     - (self.takeoff_position[2] + self.TAKEOFF_HEIGHT)
                 )
                 < 0.2
