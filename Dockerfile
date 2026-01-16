@@ -13,13 +13,24 @@ RUN git clone "https://github.com/eProsima/Micro-XRCE-DDS-Agent" --branch v2.4.1
 
 RUN sudo apt-get update && sudo apt-get -y --quiet --no-install-recommends install \
     ros-${ROS_DISTRO}-rviz2 \
+    libclang-dev \
+    python3-vcstool \
     && sudo rm -rf /var/lib/apt/lists/*
 
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
+ENV PATH="/home/${USERNAME}/.cargo/bin:${PATH}"
+RUN cargo install cargo-ament-build
+
 RUN sudo pip3 install -U numpy numpy-quaternion
+RUN sudo pip3 install git+https://github.com/colcon/colcon-cargo.git
+RUN sudo pip3 install git+https://github.com/colcon/colcon-ros-cargo.git
 
 RUN sudo usermod -aG dialout ${USERNAME}
 
 WORKDIR ${ROS_WS}
+RUN git clone https://github.com/ros2-rust/ros2_rust.git src/ros2_rust
+RUN vcs import src < src/ros2_rust/ros2_rust_humble.repos
+
 RUN source "/opt/ros/${ROS_DISTRO}/setup.bash" && \
     colcon build
 
